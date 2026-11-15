@@ -4,7 +4,7 @@ import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 import { aiModelName, aiProvider, env, isAiConfigured, isCloudinaryConfigured, isPushConfigured } from './config/env.js';
 import { runReminders } from './jobs/reminders.js';
-import { adminDb, isFirebaseAdminConfigured } from './lib/firebaseAdmin.js';
+import { adminDb, firebaseAdminIssue, isFirebaseAdminConfigured } from './lib/firebaseAdmin.js';
 import { requireAuth } from './middleware/auth.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { aiRouter } from './routes/ai.js';
@@ -30,6 +30,7 @@ app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
     firebaseAdmin: isFirebaseAdminConfigured,
+    ...(firebaseAdminIssue ? { firebaseAdminIssue } : {}),
     cloudinary: isCloudinaryConfigured,
     push: isPushConfigured,
     cron: Boolean(env.CRON_SECRET),
