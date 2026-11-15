@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { aiModelName, aiProvider, isAiConfigured } from '../config/env.js';
 import { processMaterial } from '../ai/materials.js';
+import { planSchema, studyPlan } from '../ai/plan.js';
 import { chatSchema, clearNotebookChat, generateStudio, notebookChat, studioSchema } from '../ai/notebook.js';
 import { finishQuiz, finishSchema, gradeAnswer, quizRequestSchema, startQuiz } from '../ai/quiz.js';
 import { aiUsageToday, consumeAiCredit } from '../ai/usage.js';
@@ -84,4 +85,10 @@ aiRouter.delete('/notebook/chat/:subjectId', async (req, res) => {
 aiRouter.post('/notebook/studio', async (req, res) => {
   const body = studioSchema.parse(req.body);
   res.json(await withCredit(req.uid!, body.kind, () => generateStudio(requireDb(), req.uid!, body)));
+});
+
+/** POST /api/ai/plan — "O que devo estudar agora?" com IA (plano do dia). */
+aiRouter.post('/plan', async (req, res) => {
+  const body = planSchema.parse(req.body);
+  res.json(await withCredit(req.uid!, 'plano', () => studyPlan(body)));
 });

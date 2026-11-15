@@ -67,3 +67,28 @@ export const clearNotebookChat = (subjectId: string) => apiFetch(`/ai/notebook/c
 
 export const generateStudioItem = (subjectId: string, materialIds: string[], kind: StudioKind) =>
   apiFetch<NotebookItem>('/ai/notebook/studio', { method: 'POST', json: { subjectId, materialIds, kind } });
+
+/* ── Plano do dia (O que devo estudar agora? com IA) ───────────────── */
+
+export type PlanAction = 'revisao' | 'quiz' | 'questoes' | 'erros' | 'caderno' | 'materiais';
+export interface StudyPlan {
+  headline: string;
+  steps: { subjectId: string; action: PlanAction; minutes: number; reason: string }[];
+  tip: string;
+}
+export interface PlanInput {
+  today: string;
+  availableMinutes: number;
+  subjects: {
+    id: string;
+    name: string;
+    accuracy: number | null;
+    attempts: number;
+    pendingErrors: number;
+    minutesLast7Days: number;
+    dueReviews: string[];
+    readyMaterials: number;
+  }[];
+  upcoming: { title: string; type: string; date: string }[];
+}
+export const getStudyPlan = (input: PlanInput) => apiFetch<StudyPlan>('/ai/plan', { method: 'POST', json: input });

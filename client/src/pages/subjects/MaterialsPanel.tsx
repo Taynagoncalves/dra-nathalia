@@ -63,7 +63,7 @@ import { cn } from '@/lib/cn';
 import { canMoveFolder, childrenMap, descendantIds, pathTo } from '@/lib/folderTree';
 import { allTags, explorerView, hasActiveFilters, NO_FILTERS, type SortKey, type ViewFilters } from '@/lib/materialsView';
 import type { Folder, Material, QuizSource } from '@/types/models';
-import { processMaterialForAi } from '@/services/ai';
+import { generateStudioItem, processMaterialForAi } from '@/services/ai';
 import { friendlyError } from '@/lib/firebaseErrors';
 
 type ViewMode = 'grade' | 'lista';
@@ -215,6 +215,20 @@ export function MaterialsPanel({ subjectId, subjectName }: { subjectId: string; 
   const quizFromMaterial = (mat: Material) => setQuizFor({ source: { type: 'material', subjectId, materialIds: [mat.id] }, label: `Material: ${mat.title}` });
   const quizFromFolder = (f: Folder) => setQuizFor({ source: { type: 'folder', subjectId, folderId: f.id }, label: `Pasta: ${f.name} (com subpastas)` });
 
+  /** Resumo automático do material (fica salvo no Estúdio do Caderno IA). */
+  const summarize = async (mat: Material) => {
+    const id = toast.loading(`Resumindo “${mat.title}”…`);
+    try {
+      await generateStudioItem(subjectId, [mat.id], 'resumo');
+      toast.success('Resumo pronto! Ele fica no Caderno IA → Estúdio.', {
+        id,
+        action: { label: 'Abrir', onClick: () => navigate(`/materias/${subjectId}?aba=caderno`) },
+      });
+    } catch (err) {
+      toast.error(friendlyError(err), { id });
+    }
+  };
+
   const prepareForAi = async (mat: Material) => {
     const id = toast.loading(`Lendo “${mat.title}” para a IA…`);
     try {
@@ -241,7 +255,10 @@ export function MaterialsPanel({ subjectId, subjectName }: { subjectId: string; 
     const aiAction: Action[] = !quizzable(mat)
       ? []
       : readyForAi(mat)
-        ? [{ label: 'Gerar quiz com IA', icon: <Sparkles className="size-4" />, onSelect: () => quizFromMaterial(mat) }]
+        ? [
+            { label: 'Gerar quiz com IA', icon: <Sparkles className="size-4" />, onSelect: () => quizFromMaterial(mat) },
+            { label: 'Resumir com IA', icon: <NotebookPen className="size-4" />, onSelect: () => summarize(mat) },
+          ]
         : mat.aiStatus === 'processando'
           ? [{ label: 'Processando para a IA…', icon: <Sparkles className="size-4" />, onSelect: () => {}, disabled: true }]
           : [{ label: mat.aiStatus === 'erro' ? 'Tentar ler de novo para a IA' : 'Preparar para a IA', icon: <Sparkles className="size-4" />, onSelect: () => prepareForAi(mat) }];

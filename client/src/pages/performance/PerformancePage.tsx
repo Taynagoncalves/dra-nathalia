@@ -22,6 +22,7 @@ import { categoryCounts } from '@/lib/errorStats';
 import { newSession } from '@/lib/solveSession';
 import { accuracyBy, attemptDay, dailySeries, inPeriod, minutesBy, overallAccuracy, reviewList } from '@/lib/stats';
 import { displayStreak } from '@/lib/streak';
+import { reviewSchedule } from '@/lib/review';
 
 type Period = 7 | 30 | 90 | null;
 const PERIODS: { value: Period; label: string }[] = [
@@ -86,6 +87,11 @@ export default function PerformancePage() {
         (errors.data ?? []).filter((e) => inProject(e.subjectId)),
       ).slice(0, 8),
     [attempts.data, errors.data, projectId, subjectById], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  const schedule = useMemo(
+    () => reviewSchedule((attempts.data ?? []).filter((a) => inProject(a.subjectId)), today),
+    [attempts.data, projectId, today, subjectById], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const loading = attempts.isLoading || sessions.isLoading || errors.isLoading || subjects.isLoading;
@@ -290,6 +296,33 @@ export default function PerformancePage() {
               />
             </Card>
           </div>
+
+          {/* Agenda de revisões (repetição espaçada) */}
+          <Card>
+            <CardTitle>Agenda de revisões</CardTitle>
+            <CardDescription className="mb-4">
+              Quando revisar cada assunto. O intervalo se adapta ao seu acerto: abaixo de 50% volta amanhã; com domínio, espaça para 7, 14 e 28 dias.
+            </CardDescription>
+            {schedule.length ? (
+              <ul className="divide-y divide-border">
+                {schedule.slice(0, 15).map((r) => (
+                  <li key={r.topicId} className="flex flex-wrap items-center gap-3 py-2.5">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-text">{topicById.get(r.topicId)?.name ?? 'Assunto excluído'}</p>
+                      <p className="text-xs text-text-muted">
+                        {subjectName(r.subjectId)} · {r.accuracy}% de acerto · a cada {r.intervalDays} {r.intervalDays === 1 ? 'dia' : 'dias'}
+                      </p>
+                    </div>
+                    <Badge variant={r.status === 'atrasada' ? 'error' : r.status === 'hoje' ? 'warning' : 'neutral'}>
+                      {r.status === 'atrasada' ? 'Atrasada' : r.status === 'hoje' ? 'Hoje' : `${r.dueDay.slice(8, 10)}/${r.dueDay.slice(5, 7)}`}
+                    </Badge>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="py-4 text-sm text-text-muted">Resolva questões ligadas a assuntos para montar a agenda.</p>
+            )}
+          </Card>
 
           {/* Revisão */}
           <Card>

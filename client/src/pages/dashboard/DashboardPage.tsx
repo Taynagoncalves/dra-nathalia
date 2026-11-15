@@ -1,8 +1,15 @@
 import { format, startOfWeek } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowRight, CalendarDays, CheckCircle2, Clock, Flame, FolderKanban, ListChecks, Pencil, Sparkles, Target, Timer, Zap } from 'lucide-react';
+import { RotateCcw, ArrowRight, CalendarDays, CheckCircle2, Clock, Flame, FolderKanban, ListChecks, Pencil, Sparkles, Target, Timer, Zap } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { AiPlanModal } from '@/components/dashboard/AiPlanModal';
+import { useAiStatus } from '@/hooks/useQuizzes';
+import { useAllTopics } from '@/hooks/useStudyData';
+import { friendlyError } from '@/lib/firebaseErrors';
+import { newSession } from '@/lib/solveSession';
+import { createQuiz } from '@/services/ai';
 import { EVENT_META } from '@/components/calendar/eventMeta';
 import { StatTile } from '@/components/charts/StatTile';
 import { GoalsModal } from '@/components/dashboard/GoalsModal';
@@ -47,6 +54,7 @@ function untilLabel(day: string, today: string) {
 }
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const { profile, user } = useAuth();
   const data = useDashboardData();
   const { byProject } = useProgress();
@@ -55,6 +63,10 @@ export default function DashboardPage() {
   const [recommendOpen, setRecommendOpen] = useState(false);
   const [quick, setQuick] = useState<number | null>(null);
   const [goalsOpen, setGoalsOpen] = useState(false);
+  const [planOpen, setPlanOpen] = useState(false);
+  const [reviewing, setReviewing] = useState<string | null>(null);
+  const ai = useAiStatus();
+  const topics = useAllTopics();
 
   const { today } = data;
   const weekStart = toKey(startOfWeek(fromKey(today), { weekStartsOn: WEEK_STARTS_ON }));
@@ -101,6 +113,30 @@ export default function DashboardPage() {
   ].filter((g) => g.target > 0);
   const top = data.recommendations[0];
 
+  /** Revisar um assunto: quiz curto com IA (se houver material) ou questões do banco. */
+  const reviewTopic = async (subjectId: string, topicId: string) => {
+    const bank = (data.questions.data ?? []).filter((q) => q.topicId === topicId).slice(0, 10);
+    if (ai.data?.configured && (data.readyMaterials.get(subjectId) ?? 0) > 0) {
+      setReviewing(topicId);
+      try {
+        const { quizId } = await createQuiz(
+          { type: 'subject', subjectId, topicId },
+          { count: 5, types: ['multipla', 'certo_errado'], difficulty: 'medio', mode: 'treino', focus: 'geral' },
+        );
+        navigate(`/quizzes/${quizId}`);
+      } catch (err) {
+        toast.error(friendlyError(err));
+      } finally {
+        setReviewing(null);
+      }
+    } else if (bank.length) {
+      newSession(bank.map((q) => q.id), 'Revisão do assunto', '/');
+      navigate('/questoes/resolver');
+    } else {
+      navigate(`/materias/${subjectId}?aba=questoes`);
+    }
+  };
+
   if (!activeProjects.length) {
     return (
       <>
@@ -145,9 +181,16 @@ export default function DashboardPage() {
             ) : (
               <p className="text-sm text-text-muted">Adicione matérias para receber sugestões.</p>
             )}
-            <Button className="mt-3" onClick={() => setRecommendOpen(true)}>
-              Ver sugestões <ArrowRight className="size-4" />
-            </Button>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button onClick={() => setRecommendOpen(true)}>
+                Ver sugestões <ArrowRight className="size-4" />
+              </Button>
+              {ai.data?.configured && (
+                <Button variant="secondary" onClick={() => setPlanOpen(true)}>
+                  <Sparkles className="size-4" /> Plano do dia com IA
+                </Button>
+              )}
+            </div>
           </div>
         </div>
         <div className="rounded-xl border border-border bg-bg/60 p-3">
@@ -176,6 +219,44 @@ export default function DashboardPage() {
         <StatTile icon={ListChecks} label="Questões resolvidas" value={stats.overall.total} hint={`${stats.weekQ} nesta semana`} />
         <StatTile icon={CheckCircle2} label="Acerto geral" value={stats.overall.total ? `${stats.overall.pct}%` : '—'} hint={<Link to="/desempenho" className="text-primary-text hover:underline">Ver desempenho</Link>} />
       </div>
+
+      {/* Revisões inteligentes */}
+      {data.reviews.some((r) => r.status !== 'em_breve') && (
+        <Card className="mb-6">
+          <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <RotateCcw className="size-4 text-primary-text" /> Revisões de hoje
+              </CardTitle>
+              <CardDescription>Assuntos cujo intervalo de revisão venceu — quanto menor o acerto, mais cedo volta.</CardDescription>
+            </div>
+            <ButtonLink to="/desempenho" variant="ghost" size="sm">
+              Agenda completa
+            </ButtonLink>
+          </div>
+          <ul className="divide-y divide-border">
+            {data.reviews
+              .filter((r) => r.status !== 'em_breve')
+              .slice(0, 5)
+              .map((r) => {
+                const subject = data.subjects.data?.find((s) => s.id === r.subjectId);
+                return (
+                  <li key={r.topicId} className="flex flex-wrap items-center gap-3 py-2.5">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-text">{topics.data?.find((t) => t.id === r.topicId)?.name ?? 'Assunto'}</p>
+                      <p className="text-xs text-text-muted">
+                        {subject?.name} · {r.accuracy}% de acerto · {r.status === 'atrasada' ? 'atrasada' : 'vence hoje'}
+                      </p>
+                    </div>
+                    <Button size="sm" variant="secondary" loading={reviewing === r.topicId} onClick={() => reviewTopic(r.subjectId, r.topicId)}>
+                      <RotateCcw className="size-4" /> Revisar
+                    </Button>
+                  </li>
+                );
+              })}
+          </ul>
+        </Card>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Metas */}
@@ -332,6 +413,7 @@ export default function DashboardPage() {
         suggestedQuestions={data.suggestedQuestions}
         pendingErrorCount={(id) => data.pendingErrors(id).length}
       />
+      <AiPlanModal open={planOpen} onClose={() => setPlanOpen(false)} />
       <GoalsModal open={goalsOpen} onClose={() => setGoalsOpen(false)} goals={goals.data ?? []} />
     </>
   );

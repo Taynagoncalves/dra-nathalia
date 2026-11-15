@@ -240,6 +240,7 @@ Todas as rotas, exceto `/api/health`, exigem `Authorization: Bearer <Firebase ID
 | POST | `/api/ai/grade` | corrige uma resposta discursiva |
 | POST | `/api/ai/notebook/chat` | Caderno IA: pergunta sobre as fontes (resposta com citações) |
 | DELETE | `/api/ai/notebook/chat/:subjectId` | limpa a conversa da matéria |
+| POST | `/api/ai/plan` | plano do dia (“O que devo estudar agora?” com IA) |
 | POST | `/api/ai/notebook/studio` | Caderno IA: resumo, guia, FAQ, linha do tempo ou mapa mental |
 | DELETE | `/api/projects/:id` | exclui o projeto com todas as matérias e o conteúdo delas |
 
@@ -284,4 +285,6 @@ Todas as rotas, exceto `/api/health`, exigem `Authorization: Bearer <Firebase ID
 - [x] Base da IA: módulo `server/ai`, extração de texto em trechos, JSON validado, limite diário
 - [x] Gerador de Quiz com IA (todas as origens, modos, correção de discursivas, feedback, contestar, salvar no banco)
 - [x] Caderno IA (estilo NotebookLM): chat com as fontes e citações + estúdio (resumo, guia, FAQ, linha do tempo, mapa mental)
-- [ ] Resumos automáticos, revisões inteligentes e “O que estudar agora?” com IA
+- [x] Resumos automáticos (“Resumir com IA” no material), revisões inteligentes (intervalo adaptado ao acerto) e plano do dia com IA
+
+**Etapa 2 concluída.**
