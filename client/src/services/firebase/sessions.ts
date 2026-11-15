@@ -1,9 +1,16 @@
-import { doc, runTransaction, serverTimestamp } from 'firebase/firestore';
+import { doc, getDocs, orderBy, query, runTransaction, serverTimestamp } from 'firebase/firestore';
 import { dateKey } from '@/lib/dates';
 import { nextStreak } from '@/lib/streak';
+import type { StudySession } from '@/types/models';
 import { getDb } from './app';
-import { userCol } from './db';
+import { docsWithId, userCol } from './db';
 import { userRef } from './users';
+
+/** Todas as sessões de estudo (mais recentes primeiro). */
+export async function listSessions(uid: string): Promise<StudySession[]> {
+  const snap = await getDocs(query(userCol(uid, 'studySessions'), orderBy('date', 'desc')));
+  return docsWithId<StudySession>(snap);
+}
 
 export interface SessionInput {
   subjectId: string;

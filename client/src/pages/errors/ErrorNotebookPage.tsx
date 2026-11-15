@@ -1,6 +1,6 @@
 import { AlertTriangle, CheckCircle2, NotebookPen, Pencil, Plus, RotateCcw, Target, Trash2, Undo2, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ErrorFormModal } from '@/components/errors/ErrorFormModal';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -31,7 +31,9 @@ export default function ErrorNotebookPage() {
   const topics = useAllTopics();
   const { update, remove } = useErrorMutations();
 
-  const [subjectId, setSubjectId] = useState('');
+  const [params] = useSearchParams();
+  // ?materia=ID vem do dashboard ("Ver erros" / estudo rápido)
+  const [subjectId, setSubjectId] = useState(params.get('materia') ?? '');
   const [topicId, setTopicId] = useState('');
   const [category, setCategory] = useState<ErrorCategory | ''>('');
   const [status, setStatus] = useState<Status>('pendentes');

@@ -11,7 +11,8 @@ import SetupRequired from '@/pages/SetupRequired';
 import { isFirebaseConfigured } from '@/services/firebase/app';
 
 // Páginas carregadas sob demanda (deixa o carregamento inicial mais leve).
-const Home = lazy(() => import('@/pages/Home'));
+const DashboardPage = lazy(() => import('@/pages/dashboard/DashboardPage'));
+const PerformancePage = lazy(() => import('@/pages/performance/PerformancePage'));
 const Profile = lazy(() => import('@/pages/Profile'));
 const ComingSoon = lazy(() => import('@/pages/ComingSoon'));
 const Projects = lazy(() => import('@/pages/projects/Projects'));
@@ -22,7 +23,6 @@ const QuestionsPage = lazy(() => import('@/pages/questions/QuestionsPage'));
 const SolvePage = lazy(() => import('@/pages/questions/SolvePage'));
 const ErrorNotebookPage = lazy(() => import('@/pages/errors/ErrorNotebookPage'));
 const CalendarPage = lazy(() => import('@/pages/calendar/CalendarPage'));
-const UnderConstruction = lazy(() => import('@/pages/UnderConstruction'));
 const ThemePreview = lazy(() => import('@/pages/ThemePreview'));
 
 const page = (node: ReactNode) => (
@@ -58,7 +58,7 @@ const appRoutes: RouteObject[] = [
       {
         element: <AppLayout />,
         children: [
-          { index: true, element: page(<Home />) },
+          { index: true, element: page(<DashboardPage />) },
           { path: '/projetos', element: page(<Projects />) },
           { path: '/projetos/:projectId', element: page(<ProjectDetail />) },
           { path: '/materias/:subjectId', element: page(<SubjectPage />) },
@@ -67,7 +67,7 @@ const appRoutes: RouteObject[] = [
           { path: '/questoes/resolver', element: page(<SolvePage />) },
           { path: '/erros', element: page(<ErrorNotebookPage />) },
           { path: '/calendario', element: page(<CalendarPage />) },
-          { path: '/desempenho', element: page(<UnderConstruction title="Desempenho" part={8} />) },
+          { path: '/desempenho', element: page(<PerformancePage />) },
           { path: '/perfil', element: page(<Profile />) },
           { path: '/em-breve/:slug', element: page(<ComingSoon />) },
         ],

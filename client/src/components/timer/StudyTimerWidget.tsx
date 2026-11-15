@@ -1,5 +1,6 @@
 import { Pause, Play, Square, Timer } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { useStudyTimer } from '@/contexts/StudyTimerContext';
 import { useAllSubjects } from '@/hooks/useStudyData';
@@ -25,8 +26,22 @@ export function StudyTimerWidget() {
 
   const subject = subjects.data?.find((s) => s.id === timer.state?.subjectId);
 
+  // Estudo rápido: mostra quanto falta e avisa quando a duração-alvo é atingida.
+  const elapsed = timer.elapsedMs();
+  const target = timer.state?.targetMs ?? null;
+  const remaining = target ? target - elapsed : null;
+  useEffect(() => {
+    if (!timer.state || !target || timer.state.targetNotified || elapsed < target) return;
+    timer.markTargetNotified();
+    const msg = `Tempo de estudo rápido concluído (${Math.round(target / 60000)} min)! Encerre para salvar ou continue estudando.`;
+    toast.success(msg, { duration: 10000 });
+    if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
+      new Notification('Estudo rápido concluído', { body: msg, icon: '/icons/icon-192.png' });
+    }
+  }, [elapsed, target, timer]);
+
   // Mostra o tempo na aba do navegador enquanto estuda.
-  const clock = formatClock(timer.elapsedMs());
+  const clock = remaining !== null && remaining > 0 ? `−${formatClock(remaining + 999)}` : formatClock(elapsed);
   useEffect(() => {
     if (!timer.state) return;
     const original = document.title;

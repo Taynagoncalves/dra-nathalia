@@ -188,5 +188,5 @@ Todas as rotas, exceto `/api/health`, exigem `Authorization: Bearer <Firebase ID
 - [x] Parte 5 — Banco de questões
 - [x] Parte 6 — Caderno de erros
 - [x] Parte 7 — Calendário
-- [ ] Parte 8 — Desempenho
-- [ ] Parte 9 — Dashboard
+- [x] Parte 8 — Desempenho
+- [x] Parte 9 — Dashboard

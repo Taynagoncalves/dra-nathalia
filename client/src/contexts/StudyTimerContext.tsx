@@ -13,13 +13,19 @@ export interface TimerState {
   startedAt: number | null;
   /** tempo já contado antes da última pausa */
   accumulatedMs: number;
+  /** duração-alvo (estudo rápido de 5/10/15 min); avisa ao atingir */
+  targetMs?: number | null;
+  /** já avisou que a duração-alvo foi atingida */
+  targetNotified?: boolean;
 }
 
 interface StudyTimerApi {
   state: TimerState | null;
   running: boolean;
   elapsedMs: () => number;
-  start: (subjectId: string, activity: string) => void;
+  start: (subjectId: string, activity: string, targetMinutes?: number) => void;
+  /** marca o aviso de "tempo atingido" como dado */
+  markTargetNotified: () => void;
   pause: () => void;
   resume: () => void;
   /** salva a sessão e atualiza a streak; devolve a nova sequência */
@@ -82,9 +88,20 @@ export function StudyTimerProvider({ children }: { children: ReactNode }) {
       state,
       running: !!state?.startedAt,
       elapsedMs,
-      start: (subjectId, activity) => {
+      start: (subjectId, activity, targetMinutes) => {
         if (!user) return;
-        update({ uid: user.uid, subjectId, activity, startedAt: Date.now(), accumulatedMs: 0 });
+        update({
+          uid: user.uid,
+          subjectId,
+          activity,
+          startedAt: Date.now(),
+          accumulatedMs: 0,
+          targetMs: targetMinutes ? targetMinutes * 60_000 : null,
+          targetNotified: false,
+        });
+      },
+      markTargetNotified: () => {
+        if (state) update({ ...state, targetNotified: true });
       },
       pause: () => {
         if (!state?.startedAt) return;
