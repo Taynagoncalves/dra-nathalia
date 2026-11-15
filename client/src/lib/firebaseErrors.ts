@@ -26,6 +26,9 @@ export function friendlyError(err: unknown, fallback = 'Algo deu errado. Tente n
     return 'Falta publicar os índices do Firestore: rode "firebase deploy --only firestore:indexes" (veja o README) e aguarde alguns minutos.';
   }
   if (code && MESSAGES[code]) return MESSAGES[code];
-  if (err instanceof Error && err.message && !err.message.startsWith('Firebase')) return err.message;
+  // Erros do nosso server (ApiError) já vêm com mensagem em português: mostra como está.
+  if (err instanceof Error && typeof (err as { status?: unknown }).status === 'number' && err.message) return err.message;
+  // Mensagens internas do SDK do Firebase (em inglês) não são mostradas.
+  if (err instanceof Error && err.message && !/^Firebase(Error)?:/.test(err.message)) return err.message;
   return fallback;
 }
