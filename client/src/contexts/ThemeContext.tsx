@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { applyAccent, readStoredAccent, storeAccent, type AccentMode, type AccentSettings } from '@/lib/accent';
 import {
   applyTheme,
   readStoredPreference,
@@ -17,19 +18,25 @@ interface ThemeState {
   /** tema efetivamente aplicado agora */
   resolved: ResolvedTheme;
   setPreference: (pref: ThemePreference) => void;
+  /** cores principais personalizadas (null = padrão) */
+  accent: AccentSettings;
+  setAccent: (mode: AccentMode, hex: string | null) => void;
 }
 
 const ThemeContext = createContext<ThemeState | null>(null);
+const SAVE_DELAY_MS = 700;
 
 /**
- * Tema do site. Salva em localStorage (vale na hora, sem flash) e em
- * users/{uid}.settings.theme (vale em qualquer dispositivo).
+ * Tema do site e cor principal. Salva em localStorage (vale na hora, sem flash)
+ * e em users/{uid}.settings (vale em qualquer dispositivo).
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const { user, profile } = useAuth();
   const [preference, setPref] = useState<ThemePreference>(readStoredPreference);
   const [resolved, setResolved] = useState<ResolvedTheme>(() => resolveTheme(readStoredPreference()));
+  const [accent, setAccentState] = useState<AccentSettings>(readStoredAccent);
   const firstRender = useRef(true);
+  const saveTimer = useRef<number | undefined>(undefined);
 
   // Aplica o tema e, no modo automático, acompanha o sistema operacional.
   useEffect(() => {
@@ -43,15 +50,26 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return preference === 'system' ? watchSystemTheme(update) : undefined;
   }, [preference]);
 
-  // Ao logar (ou trocar de conta), adota o tema salvo no Firestore.
+  // Aplica a cor principal (o index.html já aplicou a salva antes do React).
+  useEffect(() => {
+    applyAccent(accent);
+  }, [accent]);
+
+  // Ao logar (ou trocar de conta), adota o tema e as cores salvos no Firestore.
   const syncedUid = useRef<string | null>(null);
   useEffect(() => {
     if (!user || !profile || syncedUid.current === user.uid) return;
     syncedUid.current = user.uid;
-    const remote = profile.settings?.theme;
+    const s = profile.settings;
+    const remote = s?.theme;
     if (remote && remote !== readStoredPreference()) {
       storePreference(remote);
       setPref(remote);
+    }
+    if (s && ('accentLight' in s || 'accentDark' in s)) {
+      const next = { light: s.accentLight ?? null, dark: s.accentDark ?? null };
+      storeAccent(next);
+      setAccentState(next);
     }
   }, [user, profile]);
 
@@ -67,8 +85,28 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     [user],
   );
 
+  const setAccent = useCallback(
+    (mode: AccentMode, hex: string | null) => {
+      setAccentState((prev) => {
+        const next = { ...prev, [mode]: hex };
+        storeAccent(next);
+        // O seletor de cor dispara muitos eventos ao arrastar: grava no Firestore só no fim.
+        if (user) {
+          window.clearTimeout(saveTimer.current);
+          saveTimer.current = window.setTimeout(() => {
+            updateUserSettings(user.uid, { accentLight: next.light, accentDark: next.dark }).catch(() => {});
+          }, SAVE_DELAY_MS);
+        }
+        return next;
+      });
+    },
+    [user],
+  );
+
   return (
-    <ThemeContext.Provider value={{ preference, resolved, setPreference }}>{children}</ThemeContext.Provider>
+    <ThemeContext.Provider value={{ preference, resolved, setPreference, accent, setAccent }}>
+      {children}
+    </ThemeContext.Provider>
   );
 }
 

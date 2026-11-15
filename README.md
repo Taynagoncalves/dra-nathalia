@@ -173,6 +173,7 @@ Todas as rotas, exceto `/api/health`, exigem `Authorization: Bearer <Firebase ID
 - Gráficos: use `client/src/components/charts/chartTheme.ts`.
 - Cores de pasta escolhidas pelo usuário: use `readableTextOn()` de `client/src/lib/color.ts` para o
   texto sobre elas.
+- **Cor principal personalizável** (Perfil → Aparência), uma para cada modo. `client/src/lib/accent.ts` calcula hover, fundo suave, texto sobre o botão e cor de link a partir da cor escolhida, garantindo contraste AA (testado em `accent.test.ts`). Salva em `settings.accentLight/accentDark` e no localStorage (`tema-cores-css`, aplicado pelo index.html antes do React).
 - Prévia de tudo: **`/tema-preview`** (página temporária).
 
 ---

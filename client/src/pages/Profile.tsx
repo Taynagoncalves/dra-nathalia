@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { AccentPicker } from '@/components/theme/AccentPicker';
 import { ThemeSelector } from '@/components/theme/ThemeSelector';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button, ButtonLink } from '@/components/ui/Button';
@@ -290,6 +291,13 @@ function AppearanceCard() {
           Ver prévia do tema
         </ButtonLink>
       </div>
+      <div className="space-y-1 pt-2">
+        <p className="text-sm font-medium text-text">Cor principal</p>
+        <p className="text-xs text-text-muted">
+          Escolha qualquer cor para cada modo. Os tons de links e textos são ajustados sozinhos para continuarem legíveis.
+        </p>
+      </div>
+      <AccentPicker />
     </Card>
   );
 }

@@ -10,6 +10,10 @@ export type ThemePreference = 'light' | 'dark' | 'system';
 export interface UserSettings {
   theme: ThemePreference;
   dailyGoalMinutes: number;
+  /** cor principal personalizada no modo claro (null = padrão roxo) */
+  accentLight?: string | null;
+  /** cor principal personalizada no modo escuro (null = padrão rosa) */
+  accentDark?: string | null;
 }
 
 export interface UserProfile {
