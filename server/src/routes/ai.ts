@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { env, isAiConfigured } from '../config/env.js';
+import { aiModelName, aiProvider, isAiConfigured } from '../config/env.js';
 import { processMaterial } from '../ai/materials.js';
 import { finishQuiz, finishSchema, gradeAnswer, quizRequestSchema, startQuiz } from '../ai/quiz.js';
 import { aiUsageToday, consumeAiCredit } from '../ai/usage.js';
@@ -13,7 +13,7 @@ const id = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/, 'ID inválido');
 /** GET /api/ai/status — a IA está configurada? quanto do limite diário já foi usado? */
 aiRouter.get('/status', async (req, res) => {
   const usage = await aiUsageToday(requireDb(), req.uid!);
-  res.json({ configured: isAiConfigured, model: env.AI_MODEL, ...usage });
+  res.json({ configured: isAiConfigured, provider: aiProvider, model: aiModelName, ...usage });
 });
 
 /** POST /api/ai/materials/:id/process — extrai o texto do material para a IA (não usa a IA). */
@@ -26,7 +26,7 @@ aiRouter.post('/quizzes', async (req, res) => {
   const body = quizRequestSchema.parse(req.body);
   const db = requireDb();
   if (!isAiConfigured) {
-    return res.status(503).json({ error: 'A IA ainda não foi configurada no servidor (ANTHROPIC_API_KEY).' });
+    return res.status(503).json({ error: 'A IA ainda não foi configurada no servidor (GEMINI_API_KEY).' });
   }
   const refund = await consumeAiCredit(db, req.uid!, 'quiz');
   const quizId = await startQuiz(db, req.uid!, body, refund);

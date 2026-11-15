@@ -58,7 +58,7 @@ export default function QuizzesPage() {
 
       {ai.data && !ai.data.configured && (
         <Alert variant="warning" title="IA ainda não configurada" className="mb-4">
-          Falta a chave da API do Claude no servidor (ANTHROPIC_API_KEY). Veja a seção “IA” do README.
+          Falta a chave da IA no servidor (GEMINI_API_KEY — gratuita, em aistudio.google.com). Veja a seção “IA” do README.
         </Alert>
       )}
       <p className="mb-5 text-sm text-text-muted">

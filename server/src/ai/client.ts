@@ -1,91 +1,189 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
-import type { z } from 'zod';
-import { env, isAiConfigured } from '../config/env.js';
+import { ApiError as GeminiApiError, GoogleGenAI } from '@google/genai';
+import { z } from 'zod';
+import { aiProvider, env } from '../config/env.js';
 import { HttpError } from '../middleware/errorHandler.js';
 
 /**
- * Cliente do Claude (API da Anthropic). Só existe no server: a chave
- * ANTHROPIC_API_KEY nunca vai para o navegador.
+ * Cliente de IA do server (a chave nunca vai para o navegador). Dois provedores:
+ *  - "gemini"    → Google Gemini (tem plano gratuito) — padrão
+ *  - "anthropic" → Claude (pago)
+ * O resto do código chama só `generateStructured` e não depende do provedor.
  */
-const client = isAiConfigured ? new Anthropic({ apiKey: env.ANTHROPIC_API_KEY }) : null;
+const gemini = aiProvider === 'gemini' ? new GoogleGenAI({ apiKey: env.GEMINI_API_KEY! }) : null;
+const anthropic = aiProvider === 'anthropic' ? new Anthropic({ apiKey: env.ANTHROPIC_API_KEY }) : null;
 
-export function requireAi(): Anthropic {
-  if (!client) throw new HttpError(503, 'A IA ainda não foi configurada no servidor (ANTHROPIC_API_KEY).');
-  return client;
+export function requireAi() {
+  if (!aiProvider) {
+    throw new HttpError(503, 'A IA ainda não foi configurada no servidor (GEMINI_API_KEY ou ANTHROPIC_API_KEY).');
+  }
+  return aiProvider;
 }
 
 export type Effort = 'low' | 'medium' | 'high';
 
+/** Um bloco de texto da mensagem; `cache` marca contexto grande e repetível (ex.: material). */
+export interface ContentPart {
+  text: string;
+  cache?: boolean;
+}
+
 interface StructuredRequest<S extends z.ZodType> {
   schema: S;
   system: string;
-  /** blocos de conteúdo da mensagem do usuário (contexto + pedido) */
-  content: Anthropic.Beta.BetaContentBlockParam[];
+  content: ContentPart[];
   effort?: Effort;
   maxTokens?: number;
 }
 
+/** Resultado bruto de uma tentativa: texto JSON, ou um motivo para tentar de novo. */
+type Attempt = { text: string } | { retry: string };
+
+/* ── Gemini ─────────────────────────────────────────────────────── */
+
 /**
- * Pede uma resposta em JSON que segue `schema` (saídas estruturadas) e valida
- * com zod. Se vier inválida, tenta mais UMA vez antes de desistir.
- *
- * - Modelo: AI_MODEL (padrão claude-opus-5-5), com pensamento adaptativo.
- * - Fallback automático do servidor: se o modelo recusar por política de
- *   segurança, a própria API repete o pedido num modelo alternativo.
- * - Streaming + finalMessage(): evita timeout em respostas longas.
+ * JSON Schema a partir do zod, simplificado para a API do Gemini:
+ * sem "$schema", sem os limites gigantes que o zod põe em inteiros e com
+ * campos anuláveis sempre como anyOf [tipo, null].
  */
-export async function generateStructured<S extends z.ZodType>(req: StructuredRequest<S>): Promise<z.infer<S>> {
-  const ai = requireAi();
-  let lastError = 'resposta inválida';
-
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    let message: Anthropic.Beta.BetaMessage;
-    try {
-      message = await ai.beta.messages
-        .stream({
-          model: env.AI_MODEL,
-          max_tokens: req.maxTokens ?? 16000,
-          betas: ['server-side-fallback-2026-07-01'],
-          fallbacks: 'default',
-          output_config: { effort: req.effort ?? 'medium', format: zodOutputFormat(req.schema) },
-          // O prompt de sistema é fixo: fica em cache entre pedidos parecidos.
-          system: [{ type: 'text', text: req.system, cache_control: { type: 'ephemeral' } }],
-          messages: [{ role: 'user', content: req.content }],
-        })
-        .finalMessage();
-    } catch (err) {
-      if (err instanceof Anthropic.RateLimitError) {
-        throw new HttpError(429, 'A IA está ocupada agora. Tente de novo em alguns instantes.');
-      }
-      if (err instanceof Anthropic.AuthenticationError) {
-        throw new HttpError(503, 'A chave da IA (ANTHROPIC_API_KEY) é inválida.');
-      }
-      if (err instanceof Anthropic.BadRequestError) {
-        console.error('Pedido inválido para a IA:', err.message);
-        throw new HttpError(502, 'A IA não conseguiu processar este pedido.');
-      }
-      if (err instanceof Anthropic.APIError) {
-        console.error(`Erro da API da IA (${err.status}):`, err.message);
-        throw new HttpError(502, 'A IA está indisponível no momento. Tente de novo.');
-      }
-      throw err;
+export function jsonSchemaOf(schema: z.ZodType) {
+  const clean = (node: unknown): unknown => {
+    if (Array.isArray(node)) return node.map(clean);
+    if (!node || typeof node !== 'object') return node;
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(node)) {
+      if (k === '$schema') continue;
+      if ((k === 'minimum' || k === 'maximum') && Math.abs(Number(v)) >= Number.MAX_SAFE_INTEGER) continue;
+      out[k] = clean(v);
     }
+    if (Array.isArray(out.type)) {
+      const types = out.type as string[];
+      delete out.type;
+      return { anyOf: types.map((t) => ({ ...out, type: t })) };
+    }
+    return out;
+  };
+  return clean(z.toJSONSchema(schema)) as Record<string, unknown>;
+}
 
+/** Se a API recusar o formato estruturado, passamos a descrevê-lo no texto do pedido. */
+let geminiSchemaUnsupported = false;
+
+async function callGemini<S extends z.ZodType>(req: StructuredRequest<S>): Promise<Attempt> {
+  const schema = jsonSchemaOf(req.schema);
+  const request = (structured: boolean) =>
+    gemini!.models.generateContent({
+      model: env.GEMINI_MODEL,
+      contents: [{ role: 'user', parts: req.content.map((c) => ({ text: c.text })) }],
+      config: {
+        systemInstruction: structured
+          ? req.system
+          : `${req.system}\n\nResponda SOMENTE com um JSON válido que siga exatamente este JSON Schema:\n${JSON.stringify(schema)}`,
+        responseMimeType: 'application/json',
+        ...(structured ? { responseJsonSchema: schema } : {}),
+        maxOutputTokens: req.maxTokens ?? 16000,
+      },
+    });
+  try {
+    let res;
+    try {
+      res = await request(!geminiSchemaUnsupported);
+    } catch (err) {
+      const schemaRejected = err instanceof GeminiApiError && err.status === 400 && !/api key/i.test(err.message) && !geminiSchemaUnsupported;
+      if (!schemaRejected) throw err;
+      console.warn('Gemini recusou o formato estruturado; usando o formato descrito no texto:', err.message);
+      geminiSchemaUnsupported = true;
+      res = await request(false);
+    }
+    const blocked = res.promptFeedback?.blockReason;
+    const finish = res.candidates?.[0]?.finishReason;
+    if (blocked || finish === 'SAFETY' || finish === 'PROHIBITED_CONTENT' || finish === 'BLOCKLIST') {
+      throw new HttpError(422, 'A IA não aceitou gerar este conteúdo. Tente com outro material ou tema.');
+    }
+    if (finish === 'MAX_TOKENS') return { retry: 'resposta cortada (muito longa)' };
+    return { text: res.text ?? '' };
+  } catch (err) {
+    if (err instanceof HttpError) throw err;
+    if (err instanceof GeminiApiError) {
+      if (err.status === 429) {
+        throw new HttpError(429, 'Limite gratuito da IA atingido por agora. Espere um minuto (ou até amanhã, se for o limite diário) e tente de novo.');
+      }
+      if (err.status === 400 && /api key/i.test(err.message)) throw new HttpError(503, 'A chave da IA (GEMINI_API_KEY) é inválida.');
+      if (err.status === 401 || err.status === 403) throw new HttpError(503, 'A chave da IA (GEMINI_API_KEY) é inválida ou não tem acesso a este modelo.');
+      if (err.status === 404) throw new HttpError(503, `O modelo ${env.GEMINI_MODEL} não está disponível. Ajuste GEMINI_MODEL.`);
+      console.error(`Erro da API do Gemini (${err.status}):`, err.message);
+      throw new HttpError(502, 'A IA está indisponível no momento. Tente de novo.');
+    }
+    throw err;
+  }
+}
+
+/* ── Claude (Anthropic) ─────────────────────────────────────────── */
+
+async function callAnthropic<S extends z.ZodType>(req: StructuredRequest<S>): Promise<Attempt> {
+  try {
+    const message = await anthropic!.beta.messages
+      .stream({
+        model: env.AI_MODEL,
+        max_tokens: req.maxTokens ?? 16000,
+        // fallback do servidor: se o modelo recusar por política, a API tenta outro modelo
+        betas: ['server-side-fallback-2026-07-01'],
+        fallbacks: 'default',
+        output_config: { effort: req.effort ?? 'medium', format: zodOutputFormat(req.schema) },
+        system: [{ type: 'text', text: req.system, cache_control: { type: 'ephemeral' } }],
+        messages: [
+          {
+            role: 'user',
+            content: req.content.map((c) => ({ type: 'text' as const, text: c.text, ...(c.cache ? { cache_control: { type: 'ephemeral' as const } } : {}) })),
+          },
+        ],
+      })
+      .finalMessage();
     if (message.stop_reason === 'refusal') {
       throw new HttpError(422, 'A IA não aceitou gerar este conteúdo. Tente com outro material ou tema.');
     }
-    if (message.stop_reason === 'max_tokens') {
-      lastError = 'resposta cortada (muito longa)';
+    if (message.stop_reason === 'max_tokens') return { retry: 'resposta cortada (muito longa)' };
+    return {
+      text: message.content
+        .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === 'text')
+        .map((b) => b.text)
+        .join(''),
+    };
+  } catch (err) {
+    if (err instanceof HttpError) throw err;
+    if (err instanceof Anthropic.RateLimitError) throw new HttpError(429, 'A IA está ocupada agora. Tente de novo em alguns instantes.');
+    if (err instanceof Anthropic.AuthenticationError) throw new HttpError(503, 'A chave da IA (ANTHROPIC_API_KEY) é inválida.');
+    if (err instanceof Anthropic.BadRequestError) {
+      console.error('Pedido inválido para a IA:', err.message);
+      throw new HttpError(502, 'A IA não conseguiu processar este pedido.');
+    }
+    if (err instanceof Anthropic.APIError) {
+      console.error(`Erro da API do Claude (${err.status}):`, err.message);
+      throw new HttpError(502, 'A IA está indisponível no momento. Tente de novo.');
+    }
+    throw err;
+  }
+}
+
+/* ── Função comum ───────────────────────────────────────────────── */
+
+/**
+ * Pede uma resposta em JSON que segue `schema` e valida com zod.
+ * Se vier inválida (ou cortada), tenta mais UMA vez antes de desistir.
+ */
+export async function generateStructured<S extends z.ZodType>(req: StructuredRequest<S>): Promise<z.infer<S>> {
+  const provider = requireAi();
+  let lastError = 'resposta inválida';
+
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const result = provider === 'gemini' ? await callGemini(req) : await callAnthropic(req);
+    if ('retry' in result) {
+      lastError = result.retry;
       continue;
     }
-
-    const text = message.content
-      .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === 'text')
-      .map((b) => b.text)
-      .join('');
     try {
-      const parsed = req.schema.safeParse(JSON.parse(text));
+      const parsed = req.schema.safeParse(JSON.parse(result.text));
       if (parsed.success) return parsed.data;
       lastError = parsed.error.message.slice(0, 300);
     } catch {

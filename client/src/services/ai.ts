@@ -5,7 +5,8 @@ import { apiFetch } from './api';
 
 export interface AiStatusInfo {
   configured: boolean;
-  model: string;
+  provider: 'gemini' | 'anthropic' | null;
+  model: string | null;
   used: number;
   limit: number;
 }

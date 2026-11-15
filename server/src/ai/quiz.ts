@@ -203,8 +203,8 @@ export async function generateQuiz(db: Firestore, uid: string, req: QuizRequest)
     .join('\n\n');
 
   const content = [
-    ...(xml ? [{ type: 'text' as const, text: xml, cache_control: { type: 'ephemeral' as const } }] : []),
-    { type: 'text' as const, text: instructions },
+    ...(xml ? [{ text: xml, cache: true }] : []),
+    { text: instructions },
   ];
 
   const result = await generateStructured({
@@ -306,7 +306,6 @@ export async function gradeAnswer(db: Firestore, uid: string, quizId: string, in
     maxTokens: 8000,
     content: [
       {
-        type: 'text',
         text: [
           `Pergunta: ${item.statement}`,
           `Resposta-modelo: ${item.correctAnswer}`,
@@ -379,7 +378,6 @@ export async function finishQuiz(db: Firestore, uid: string, quizId: string, inp
         maxTokens: 8000,
         content: [
           {
-            type: 'text',
             text: `Nota: ${correct} de ${total}.\n\nQuestões:\n${counted
               .map((a) => {
                 const it = items[a.index]!;

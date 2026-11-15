@@ -2,7 +2,7 @@ import cors from 'cors';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
-import { env, isAiConfigured, isCloudinaryConfigured, isPushConfigured } from './config/env.js';
+import { aiModelName, aiProvider, env, isAiConfigured, isCloudinaryConfigured, isPushConfigured } from './config/env.js';
 import { runReminders } from './jobs/reminders.js';
 import { adminDb, isFirebaseAdminConfigured } from './lib/firebaseAdmin.js';
 import { requireAuth } from './middleware/auth.js';
@@ -58,7 +58,7 @@ app.listen(env.PORT, () => {
   console.log(`   Firebase Admin: ${isFirebaseAdminConfigured ? '✅ configurado' : '⚠️  pendente (preencha o .env)'}`);
   console.log(`   Cloudinary:     ${isCloudinaryConfigured ? '✅ configurado' : '⚠️  pendente (preencha o .env)'}`);
   console.log(`   Notificações:   ${isPushConfigured ? '✅ configurado' : '⚠️  pendente (VAPID no .env)'}`);
-  console.log(`   IA (Claude):    ${isAiConfigured ? `✅ configurado (${env.AI_MODEL})` : '⚠️  pendente (ANTHROPIC_API_KEY no .env)'}`);
+  console.log(`   IA:             ${isAiConfigured ? `✅ ${aiProvider} (${aiModelName})` : '⚠️  pendente (GEMINI_API_KEY no .env)'}`);
 });
 
 // Enquanto o server estiver acordado, também roda os lembretes a cada 30 min

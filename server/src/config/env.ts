@@ -19,7 +19,12 @@ const schema = z.object({
   CLOUDINARY_API_SECRET: optional,
   MAX_UPLOAD_MB: z.coerce.number().positive().default(10),
 
-  // IA (Claude). A chave fica SÓ aqui no server.
+  // IA. As chaves ficam SÓ aqui no server.
+  // Provedor: "gemini" (Google, tem plano gratuito) ou "anthropic" (Claude, pago).
+  // Sem AI_PROVIDER, usa o que tiver chave (Gemini primeiro).
+  AI_PROVIDER: z.preprocess((v) => (v === '' ? undefined : v), z.enum(['gemini', 'anthropic']).optional()),
+  GEMINI_API_KEY: optional,
+  GEMINI_MODEL: z.string().default('gemini-flash-latest'),
   ANTHROPIC_API_KEY: optional,
   AI_MODEL: z.string().default('claude-opus-5-5'),
   /** gerações de IA por usuário por dia (controle de custo) */
@@ -43,7 +48,22 @@ export const env = parsed.data;
 
 export const isPushConfigured = Boolean(env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY);
 
-export const isAiConfigured = Boolean(env.ANTHROPIC_API_KEY);
+/** Provedor de IA em uso (ou null se nenhuma chave estiver configurada). */
+export const aiProvider: 'gemini' | 'anthropic' | null =
+  env.AI_PROVIDER === 'anthropic' && env.ANTHROPIC_API_KEY
+    ? 'anthropic'
+    : env.AI_PROVIDER === 'gemini' && env.GEMINI_API_KEY
+      ? 'gemini'
+      : env.GEMINI_API_KEY
+        ? 'gemini'
+        : env.ANTHROPIC_API_KEY
+          ? 'anthropic'
+          : null;
+
+export const isAiConfigured = aiProvider !== null;
+
+/** Nome do modelo em uso (para o status e os logs). */
+export const aiModelName = aiProvider === 'gemini' ? env.GEMINI_MODEL : aiProvider === 'anthropic' ? env.AI_MODEL : null;
 
 export const isCloudinaryConfigured = Boolean(
   env.CLOUDINARY_CLOUD_NAME && env.CLOUDINARY_API_KEY && env.CLOUDINARY_API_SECRET,

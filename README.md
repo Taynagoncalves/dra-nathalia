@@ -173,17 +173,25 @@ por 60 dias — se isso acontecer, é só reativar na aba Actions.)
 
 ## 5. Inteligência Artificial (Etapa 2)
 
-A IA roda **só no server** (`server/src/ai/`), com a API do Claude (Anthropic). A chave nunca vai para o navegador.
+A IA roda **só no server** (`server/src/ai/`); a chave nunca vai para o navegador. Há dois provedores:
 
-1. Crie uma conta em <https://console.anthropic.com>, adicione créditos em **Billing** e gere uma chave em **API Keys**.
-2. Coloque em `server/.env` (e nas variáveis do server no Render): `ANTHROPIC_API_KEY=...`
-3. Reinicie o server. `GET /api/health` deve mostrar `"ai": true`.
-
-| Variável | Padrão | Para quê |
+| | Gemini (Google) — **padrão** | Claude (Anthropic) — opcional |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | — | chave da API (obrigatória para a IA) |
-| `AI_MODEL` | `claude-opus-5-5` | modelo usado |
-| `AI_DAILY_LIMIT` | `30` | usos da IA por pessoa por dia (controle de custo) |
+| Custo | **gratuito** (plano free do Google AI Studio, com limites por minuto e por dia) | pago por uso |
+| Chave | <https://aistudio.google.com/apikey> (conta Google, sem cartão) | <https://console.anthropic.com> → API Keys |
+| Variáveis | `AI_PROVIDER=gemini`, `GEMINI_API_KEY`, `GEMINI_MODEL` | `AI_PROVIDER=anthropic`, `ANTHROPIC_API_KEY`, `AI_MODEL` |
+
+1. Gere a chave do Gemini e coloque em `server/.env` (e nas variáveis do server no Render): `GEMINI_API_KEY=...`
+2. Reinicie o server. `GET /api/health` deve mostrar `"ai": true`.
+
+> **Privacidade no plano gratuito:** o Google pode usar o conteúdo enviado no plano gratuito para melhorar
+> os produtos dele (inclusive com revisão humana). Para apostilas e anotações de estudo não há problema;
+> **não envie documentos com dados pessoais de terceiros** (ex.: peças reais de clientes). No plano pago do
+> Gemini ou com o Claude, os dados não são usados para treino.
+
+`AI_DAILY_LIMIT` (padrão 30) limita os usos por pessoa por dia; `GEMINI_MODEL=gemini-flash-latest` aponta
+sempre para o modelo Flash atual. Se o plano gratuito atingir o limite do Google, o site avisa para tentar
+mais tarde.
 
 **Como funciona**
 
@@ -198,11 +206,10 @@ A IA roda **só no server** (`server/src/ai/`), com a API do Claude (Anthropic).
 - **Respostas em JSON validado:** saídas estruturadas + zod; se vier inválido, tenta de novo uma vez.
 - **Integridade jurídica:** o prompt proíbe inventar artigos, súmulas e julgados e pede para dizer quando
   não há certeza (`server/src/ai/prompts.ts`).
-- **Recusas:** usa o *fallback* do servidor (`fallbacks: "default"`): se o modelo recusar um pedido por
-  política de segurança, a API tenta automaticamente num modelo alternativo.
-- **Custo:** cada quiz lê no máximo ~180 mil caracteres do material (~45 mil tokens). Com o modelo padrão,
-  um quiz de 10 questões custa em torno de US$ 0,20–0,40. O limite diário (`AI_DAILY_LIMIT`) e o contador
-  em `users/{uid}/aiUsage` (só o server escreve) evitam surpresas. Falhas não contam no limite.
+- **Formato garantido:** no Gemini, `responseJsonSchema`; no Claude, saídas estruturadas + *fallback* do
+  servidor em caso de recusa. Nos dois, a resposta é validada com zod.
+- **Limites:** cada quiz lê no máximo ~180 mil caracteres do material. O limite diário (`AI_DAILY_LIMIT`) e o
+  contador em `users/{uid}/aiUsage` (só o server escreve) controlam o uso. Falhas não contam no limite.
 
 ---
 

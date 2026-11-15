@@ -175,7 +175,7 @@ export function QuizConfigModal({ open, onClose, source, sourceLabel, defaultSub
       <div className="space-y-5">
         {notConfigured && (
           <Alert variant="warning" title="IA não configurada">
-            Falta a chave da API do Claude no servidor (ANTHROPIC_API_KEY). Veja o README.
+            Falta a chave da IA no servidor (GEMINI_API_KEY — gratuita). Veja a seção “IA” do README.
           </Alert>
         )}
         {limitReached && <Alert variant="warning">Você atingiu o limite diário de usos da IA. Ele renova amanhã.</Alert>}
