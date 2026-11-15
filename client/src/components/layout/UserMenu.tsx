@@ -1,4 +1,4 @@
-import { LogOut, Palette, UserRound } from 'lucide-react';
+import { Download, LogOut, Palette, UserRound } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Avatar } from '@/components/ui/Avatar';
@@ -6,11 +6,14 @@ import { Dropdown, DropdownItem } from '@/components/ui/Dropdown';
 import { useAuth } from '@/contexts/AuthContext';
 import { friendlyError } from '@/lib/firebaseErrors';
 import { signOut } from '@/services/firebase/auth';
+import { promptInstall } from '@/lib/pwa';
+import { useInstallState } from '@/components/settings/AppAndNotificationsCard';
 
 export function UserMenu() {
   const { profile, user } = useAuth();
   const navigate = useNavigate();
   const name = profile?.name || user?.displayName || '';
+  const { canInstall } = useInstallState();
 
   const handleSignOut = async () => {
     try {
@@ -60,6 +63,17 @@ export function UserMenu() {
             >
               Prévia do tema
             </DropdownItem>
+            {canInstall && (
+              <DropdownItem
+                icon={<Download className="size-4" />}
+                onSelect={() => {
+                  close();
+                  promptInstall();
+                }}
+              >
+                Instalar app
+              </DropdownItem>
+            )}
             <DropdownItem danger icon={<LogOut className="size-4" />} onSelect={handleSignOut}>
               Sair
             </DropdownItem>

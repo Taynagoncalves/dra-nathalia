@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { AppAndNotificationsCard } from '@/components/settings/AppAndNotificationsCard';
 import { AccentPicker } from '@/components/theme/AccentPicker';
 import { ThemeSelector } from '@/components/theme/ThemeSelector';
 import { Avatar } from '@/components/ui/Avatar';
@@ -24,10 +25,11 @@ import { updateUserProfile, updateUserSettings } from '@/services/firebase/users
 export default function Profile() {
   return (
     <div className="max-w-3xl space-y-6">
-      <PageHeader title="Perfil" description="Seus dados, sua meta diária e a aparência do site." />
+      <PageHeader title="Perfil" description="Seus dados, metas, aparência, app e notificações." />
       <IdentityCard />
       <GoalCard />
       <AppearanceCard />
+      <AppAndNotificationsCard />
       <AccountCard />
     </div>
   );

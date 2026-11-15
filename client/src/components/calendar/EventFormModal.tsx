@@ -56,7 +56,8 @@ export function EventFormModal({ open, onClose, event, defaultDate }: EventFormM
     };
     try {
       if (event) {
-        await update.mutateAsync({ id: event.id, data });
+        // Mudou a data: os lembretes recomeçam (7, 3, 1 dia e no dia)
+        await update.mutateAsync({ id: event.id, data: event.date !== date ? { ...data, reminders: {} } : data });
         toast.success('Evento atualizado.');
       } else {
         await create.mutateAsync({ ...data, done: false });

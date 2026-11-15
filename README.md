@@ -128,7 +128,7 @@ Preencha os valores pedidos no painel.
 | Build command | `npm install && npm run build` | `npm install && npm run build` |
 | Publish directory / Start command | `dist` | `npm start` |
 | Health check path | — | `/api/health` |
-| Variáveis | todas as `VITE_*` do `client/.env.example` + `VITE_API_URL` = URL da API | as do `server/.env.example`, com `CLIENT_ORIGIN` = URL do site |
+| Variáveis | todas as `VITE_*` do `client/.env.example` + `VITE_API_URL` = URL da API | as do `server/.env.example` (inclusive `VAPID_*` e `CRON_SECRET`), com `CLIENT_ORIGIN` = URL do site |
 
 Depois de criar, **não esqueça**:
 
@@ -144,6 +144,33 @@ Depois de criar, **não esqueça**:
 
 ---
 
+## 4. App no celular (PWA) e notificações
+
+- **Instalar:** Perfil → *App e notificações* → **Instalar app** (Android/Chrome/Edge). No iPhone:
+  Safari → Compartilhar → *Adicionar à Tela de Início*. O ícone é a balança ⚖️ (`client/public/icons`).
+- **Notificações no aparelho (mesmo com o site fechado):** Perfil → **Ativar notificações**. No iPhone, só
+  funciona com o app instalado (iOS 16.4+).
+- **O que é avisado:** eventos do calendário **7 dias, 3 dias e 1 dia antes, e no dia** (a partir das 7h) e
+  **sequência em risco** às 19h. Tudo também aparece no sino 🔔 do site. Cada lembrete é enviado uma vez só.
+- **Como funciona:** o server envia Web Push com chaves VAPID próprias (`VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`,
+  geradas com `npx web-push generate-vapid-keys`). A rotina `server/src/jobs/reminders.ts` roda a cada 30 min
+  enquanto o server está acordado e é chamada **de hora em hora pelo GitHub Actions**
+  (`.github/workflows/lembretes.yml`), que também acorda o server gratuito do Render.
+
+### Configurar o agendador (GitHub Actions)
+
+GitHub → repositório → **Settings → Secrets and variables → Actions → New repository secret**:
+
+| Secret | Valor |
+|---|---|
+| `API_URL` | URL do server no Render, ex.: `https://dra-nathalia-server.onrender.com` |
+| `CRON_SECRET` | o mesmo valor de `CRON_SECRET` do `server/.env` |
+
+Teste em **Actions → Lembretes → Run workflow**. (O GitHub pausa agendamentos de repositórios sem commits
+por 60 dias — se isso acontecer, é só reativar na aba Actions.)
+
+---
+
 ## API (`/server`)
 
 Todas as rotas, exceto `/api/health`, exigem `Authorization: Bearer <Firebase ID Token>`.
@@ -156,6 +183,9 @@ Todas as rotas, exceto `/api/health`, exigem `Authorization: Bearer <Firebase ID
 | POST | `/api/cloudinary/delete-batch` | `{ items: [{ publicId, resourceType }] }` |
 | DELETE | `/api/folders/:id?mode=moveUp|cascade` | exclui pasta (conteúdo sobe um nível, ou apaga tudo + arquivos) |
 | DELETE | `/api/subjects/:id` | exclui a matéria com tudo dela (inclusive os arquivos) |
+| GET | `/api/push/public-key` | chave VAPID pública |
+| POST | `/api/push/subscribe` · `/api/push/unsubscribe` · `/api/push/test` | notificações do aparelho |
+| POST | `/api/cron/lembretes` | rotina de lembretes (cabeçalho `x-cron-secret`, sem login) |
 | DELETE | `/api/projects/:id` | exclui o projeto com todas as matérias e o conteúdo delas |
 
 ---
@@ -190,3 +220,6 @@ Todas as rotas, exceto `/api/health`, exigem `Authorization: Bearer <Firebase ID
 - [x] Parte 7 — Calendário
 - [x] Parte 8 — Desempenho
 - [x] Parte 9 — Dashboard
+- [x] Extras — cor principal personalizável, excluir projeto, app instalável (PWA) com ícone, notificações e lembretes
+
+**Etapa 1 concluída.** Próxima: Etapa 2 (IA).

@@ -14,6 +14,10 @@ export interface UserSettings {
   accentLight?: string | null;
   /** cor principal personalizada no modo escuro (null = padrão rosa) */
   accentDark?: string | null;
+  /** lembretes de eventos do calendário (padrão: ligado) */
+  notifyEvents?: boolean;
+  /** aviso de sequência em risco às 19h (padrão: ligado) */
+  notifyStreak?: boolean;
 }
 
 export interface UserProfile {
@@ -203,6 +207,8 @@ export interface CalendarEvent extends WithId {
   type: EventType;
   done: boolean;
   notes?: string;
+  /** etapas de lembrete já enviadas pelo server ('7', '3', '1', '0') */
+  reminders?: Record<string, boolean>;
 }
 
 /* ── Etapa 2 (reservado) ─────────────────────────────────────────── */

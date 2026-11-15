@@ -16,7 +16,9 @@ export type UserCollection =
   | 'errors'
   | 'studySessions'
   | 'goals'
-  | 'events';
+  | 'events'
+  | 'notifications'
+  | 'pushSubscriptions';
 
 export const userCol = (uid: string, name: UserCollection) => collection(getDb(), 'users', uid, name);
 

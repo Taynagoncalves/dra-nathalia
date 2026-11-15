@@ -54,8 +54,8 @@ export function StudyTimerWidget() {
   if (!timer.state) {
     return (
       <>
-        <Button variant="secondary" size="sm" onClick={() => setStartOpen(true)}>
-          <Timer className="size-4" /> Estudar
+        <Button variant="secondary" size="sm" onClick={() => setStartOpen(true)} aria-label="Começar a estudar (timer)">
+          <Timer className="size-4" /> <span className="hidden min-[400px]:inline">Estudar</span>
         </Button>
         <StartTimerModal open={startOpen} onClose={() => setStartOpen(false)} />
       </>

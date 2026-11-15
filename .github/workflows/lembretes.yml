@@ -1,0 +1,34 @@
+# Dispara os lembretes (calendário e sequência de estudos) de hora em hora.
+# Também "acorda" o server gratuito do Render, que dorme quando fica sem uso.
+#
+# Configure em GitHub → Settings → Secrets and variables → Actions:
+#   API_URL      → URL do server no Render (ex.: https://dra-nathalia-server.onrender.com)
+#   CRON_SECRET  → o mesmo valor de CRON_SECRET do server
+name: Lembretes
+
+on:
+  schedule:
+    - cron: '5 * * * *' # todo hora, no minuto 5 (UTC)
+  workflow_dispatch: {} # permite rodar à mão pela aba Actions
+
+jobs:
+  lembretes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Chamar o server
+        env:
+          API_URL: ${{ secrets.API_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$API_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "Configure os secrets API_URL e CRON_SECRET do repositório."; exit 1
+          fi
+          # O server gratuito pode levar ~1 min para acordar: tenta algumas vezes.
+          for i in 1 2 3 4; do
+            if curl -fsS --max-time 90 -X POST "$API_URL/api/cron/lembretes" -H "x-cron-secret: $CRON_SECRET"; then
+              echo; exit 0
+            fi
+            echo "Tentativa $i falhou; aguardando…"; sleep 20
+          done
+          exit 1

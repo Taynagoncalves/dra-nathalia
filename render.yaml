@@ -28,6 +28,15 @@ services:
         sync: false
       - key: MAX_UPLOAD_MB
         value: "10"
+      # Notificações (copie os valores do server/.env)
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        value: https://dra-nathalia.onrender.com
+      - key: CRON_SECRET
+        sync: false
 
   # ── Site (React, estático) ──────────────────────────────────────
   - type: web

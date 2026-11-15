@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/Button';
 import { MobileDrawer } from './MobileDrawer';
 import { MobileTabBar } from './MobileTabBar';
 import { SidebarContent } from './SidebarContent';
+import { useLocalReminders } from '@/hooks/useNotifications';
+import { NotificationBell } from './NotificationBell';
 import { UserMenu } from './UserMenu';
 
 /**
@@ -18,6 +20,7 @@ export function AppLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
   const { pathname } = useLocation();
+  useLocalReminders();
 
   // Ao trocar de página: fecha o drawer e volta ao topo.
   useEffect(() => {
@@ -42,7 +45,7 @@ export function AppLayout() {
 
       <div className="md:pl-64">
         <header className="sticky top-0 z-20 border-b border-border bg-bg/85 backdrop-blur">
-          <div className="flex h-16 items-center gap-2 px-4 md:px-8">
+          <div className="flex h-16 items-center gap-1 px-3 sm:gap-2 sm:px-4 md:px-8">
             <Button
               variant="ghost"
               size="icon"
@@ -56,13 +59,14 @@ export function AppLayout() {
               <span className="grid size-7 place-items-center rounded-lg bg-primary text-on-primary">
                 <BookOpen className="size-3.5" />
               </span>
-              Estudos
+              <span className="hidden min-[420px]:inline">Estudos</span>
             </Link>
 
             <div className="flex flex-1 justify-end">
               <StudyTimerWidget />
             </div>
 
+            <NotificationBell />
             <ThemeToggle />
             <UserMenu />
           </div>
