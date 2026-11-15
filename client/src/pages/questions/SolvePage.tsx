@@ -9,7 +9,8 @@ import { Card } from '@/components/ui/Card';
 import { Textarea } from '@/components/ui/Field';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { ErrorBlock, LoadingBlock } from '@/components/ui/States';
-import { useAttemptMutation, useQuestions } from '@/hooks/useQuestions';
+import { toast } from 'sonner';
+import { useAttemptMutation, useErrorMutations, useErrors, useQuestions } from '@/hooks/useQuestions';
 import { useAllSubjects, useAllTopics } from '@/hooks/useStudyData';
 import { cn } from '@/lib/cn';
 import { formatClock } from '@/lib/dates';
@@ -127,6 +128,10 @@ function QuestionStep({ question: q, subjectName, topicName, isLast, onAnswered,
   const [result, setResult] = useState<StepResult | null>(null);
   const [errorCtx, setErrorCtx] = useState<ErrorContext | null>(null);
   const [registered, setRegistered] = useState(false);
+  const errors = useErrors();
+  const { update: updateError } = useErrorMutations();
+  // Erros pendentes desta questão no caderno (para "marcar como resolvido" ao acertar)
+  const openErrors = (errors.data ?? []).filter((e) => e.questionId === q.id && !e.resolved);
 
   const elapsed = () => Math.round((Date.now() - startedAt.current) / 1000);
   const errorContext: ErrorContext = { questionId: q.id, subjectId: q.subjectId, topicId: q.topicId ?? null };
@@ -297,6 +302,17 @@ function QuestionStep({ question: q, subjectName, topicName, isLast, onAnswered,
           {result && 'Enter para continuar'}
         </span>
         <div className="ml-auto flex flex-wrap gap-2">
+          {result?.correct && openErrors.length > 0 && (
+            <Button
+              variant="secondary"
+              onClick={() => {
+                openErrors.forEach((e) => updateError.mutate({ id: e.id, data: { resolved: true } }));
+                toast.success('Erro marcado como resolvido no caderno.');
+              }}
+            >
+              <CheckCircle2 className="size-4" /> Marcar erro como resolvido
+            </Button>
+          )}
           {result && !result.correct && (
             <Button variant="secondary" onClick={() => setErrorCtx(errorContext)} disabled={registered}>
               <NotebookPen className="size-4" /> {registered ? 'Registrado' : 'Caderno de erros'}
