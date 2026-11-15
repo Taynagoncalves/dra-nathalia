@@ -11,6 +11,7 @@ import { aiRouter } from './routes/ai.js';
 import { cloudinaryRouter } from './routes/cloudinary.js';
 import { cronRouter } from './routes/cron.js';
 import { foldersRouter } from './routes/folders.js';
+import { liveRouter } from './routes/live.js';
 import { projectsRouter } from './routes/projects.js';
 import { pushRouter } from './routes/push.js';
 import { subjectsRouter } from './routes/subjects.js';
@@ -48,6 +49,7 @@ app.use('/api/subjects', subjectsRouter);
 app.use('/api/projects', projectsRouter);
 app.use('/api/push', pushRouter);
 app.use('/api/ai', aiRouter);
+app.use('/api/live', liveRouter);
 
 app.use('/api', (_req, res) => {
   res.status(404).json({ error: 'Rota não encontrada.' });

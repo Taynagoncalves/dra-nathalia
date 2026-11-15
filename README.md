@@ -240,6 +240,9 @@ Todas as rotas, exceto `/api/health`, exigem `Authorization: Bearer <Firebase ID
 | POST | `/api/ai/grade` | corrige uma resposta discursiva |
 | POST | `/api/ai/notebook/chat` | Caderno IA: pergunta sobre as fontes (resposta com citações) |
 | DELETE | `/api/ai/notebook/chat/:subjectId` | limpa a conversa da matéria |
+| POST | `/api/ai/decks` · `/api/ai/teach/evaluate` | slides com IA · avaliação do ensino oral |
+| POST | `/api/ai/tayna/question` · `answer` · `feedback` | perguntas, reações e feedback da Tayna |
+| POST | `/api/live` · `/api/live/:code/suggest` · `evaluate` · `end` | sessão ao vivo (Tayna de verdade) |
 | POST | `/api/ai/plan` | plano do dia (“O que devo estudar agora?” com IA) |
 | POST | `/api/ai/notebook/studio` | Caderno IA: resumo, guia, FAQ, linha do tempo ou mapa mental |
 | DELETE | `/api/projects/:id` | exclui o projeto com todas as matérias e o conteúdo delas |
@@ -288,3 +291,14 @@ Todas as rotas, exceto `/api/health`, exigem `Authorization: Bearer <Firebase ID
 - [x] Resumos automáticos (“Resumir com IA” no material), revisões inteligentes (intervalo adaptado ao acerto) e plano do dia com IA
 
 **Etapa 2 concluída.**
+
+### Etapa 3 (Modo Professora)
+
+- [x] Slides gerados pela IA (5 modelos), editáveis e reordenáveis
+- [x] Ensino oral: fala transcrita (Web Speech API, pt-BR) e avaliada (conceitos, omissões, clareza, coerência)
+- [x] Modo Tayna: nível, momento, personalidade e voz/texto; reage como colega (boa → “entendi!”, incompleta → acompanhamento, errada → anota); feedback final, quiz do que errou e caderno de erros
+- [x] Tayna de verdade: sessão ao vivo com código (`/ao-vivo/CÓDIGO`), convidado entra sem conta (login anônimo), slide sincronizado, perguntas sugeridas com gabarito escondido e avaliação pela IA. Regras: só quem tem o código abre, e só enquanto a sessão está ativa
+
+> A transcrição de voz funciona no Chrome e no Edge (computador e Android). Sem suporte, dá para digitar.
+
+**Etapa 3 concluída.**

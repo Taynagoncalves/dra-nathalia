@@ -28,6 +28,7 @@ export const MAIN_NAV: NavItem[] = [
   { to: '/questoes', label: 'Questões', icon: ListChecks },
   { to: '/quizzes', label: 'Quizzes com IA', short: 'Quizzes', icon: Sparkles },
   { to: '/caderno', label: 'Caderno IA', short: 'Caderno', icon: BookOpenText },
+  { to: '/professora', label: 'Modo Professora', short: 'Professora', icon: Presentation },
   { to: '/erros', label: 'Caderno de Erros', short: 'Erros', icon: NotebookPen },
   { to: '/calendario', label: 'Calendário', icon: CalendarDays },
   { to: '/desempenho', label: 'Desempenho', icon: ChartLine },
@@ -47,14 +48,6 @@ export interface SoonItem {
 
 /** Funções das próximas etapas: aparecem com o selo "Em breve". */
 export const SOON_NAV: SoonItem[] = [
-  {
-    slug: 'professora',
-    label: 'Modo Professora',
-    icon: Presentation,
-    stage: 'Etapa 3',
-    description:
-      'Crie slides, apresente o conteúdo em voz alta e responda às perguntas da Tayna, que aponta o que faltou na sua explicação.',
-  },
   {
     slug: 'simulador',
     label: 'Simulador Jurídico',

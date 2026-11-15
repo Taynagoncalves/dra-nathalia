@@ -21,6 +21,21 @@ service cloud.firestore {
       }
     }
 
-    // Etapa 3 (liveSessions) será adicionada aqui. Todo o resto é negado.
+    // Etapa 3 — "Tayna de verdade": sessão ao vivo com código.
+    // Só quem tem o código (= ID do documento) consegue abrir; listar é proibido.
+    match /liveSessions/{code} {
+      function isOwnerOf(data) { return request.auth != null && data.ownerUid == request.auth.uid; }
+      function active(data) { return data.status == 'ativa' && data.expiresAt > request.time; }
+
+      allow get: if isOwnerOf(resource.data) || (request.auth != null && active(resource.data));
+      allow list: if false;
+      allow create: if false; // criada pelo server (POST /api/live)
+      allow delete: if isOwnerOf(resource.data);
+      allow update: if isOwnerOf(resource.data)
+        || (request.auth != null && active(resource.data)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participants', 'questions']));
+    }
+
+    // Todo o resto é negado.
   }
 }

@@ -343,3 +343,58 @@ export interface NotebookItem<K extends StudioKind = StudioKind> extends WithId 
   truncated?: boolean;
   createdAt: Timestamp | null;
 }
+
+/* ── Etapa 3: Modo Professora ────────────────────────────────────── */
+
+export type DeckTemplate = 'tradicional' | 'visual' | 'revisao' | 'juridica' | 'ensinar';
+
+export interface Slide {
+  title: string;
+  bullets: string[];
+  /** roteiro do que falar */
+  notes: string;
+  /** destaque: exemplo, esquema, pegadinha ou pergunta */
+  highlight: string | null;
+}
+
+export interface Deck extends WithId {
+  title: string;
+  subjectId: string;
+  topicId?: string | null;
+  template: DeckTemplate;
+  slides: Slide[];
+  sourceMaterialIds: string[];
+  noMaterial?: boolean;
+  createdAt: Timestamp | null;
+  updatedAt: Timestamp | null;
+}
+
+export type TaynaLevel = 'basico' | 'intermediario' | 'avancado' | 'pegadinha' | 'oab' | 'concurso';
+export type TaynaPersonality = 'curiosa' | 'rigorosa' | 'advogada_do_diabo';
+
+export interface LiveQuestion {
+  id: string;
+  slideIndex: number;
+  text: string;
+  expectedAnswer: string | null;
+  askedBy: string;
+  askedByName: string;
+  result: 'certa' | 'errada' | null;
+  aiVerdict?: string;
+  aiNote?: string;
+  createdAt: number;
+}
+
+export interface LiveSession {
+  id: string;
+  ownerUid: string;
+  ownerName: string;
+  deckId: string;
+  deckTitle: string;
+  slides: Pick<Slide, 'title' | 'bullets' | 'highlight'>[];
+  currentSlide: number;
+  status: 'ativa' | 'encerrada';
+  participants: Record<string, string>;
+  questions: LiveQuestion[];
+  suggestions: Record<string, { question: string; answer: string }[]>;
+}

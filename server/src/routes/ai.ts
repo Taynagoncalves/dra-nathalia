@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { aiModelName, aiProvider, isAiConfigured } from '../config/env.js';
 import { processMaterial } from '../ai/materials.js';
 import { planSchema, studyPlan } from '../ai/plan.js';
+import { answerSchema, deckSchema, evaluateSchema, evaluateTeaching, feedbackSchema, generateDeck, questionSchema, taynaAnswer, taynaFeedback, taynaQuestion } from '../ai/teacher.js';
+import { rateLimitOrThrow } from '../lib/rateLimit.js';
 import { chatSchema, clearNotebookChat, generateStudio, notebookChat, studioSchema } from '../ai/notebook.js';
 import { finishQuiz, finishSchema, gradeAnswer, quizRequestSchema, startQuiz } from '../ai/quiz.js';
 import { aiUsageToday, consumeAiCredit } from '../ai/usage.js';
@@ -91,4 +93,41 @@ aiRouter.post('/notebook/studio', async (req, res) => {
 aiRouter.post('/plan', async (req, res) => {
   const body = planSchema.parse(req.body);
   res.json(await withCredit(req.uid!, 'plano', () => studyPlan(body)));
+});
+
+/* ── Modo Professora ──────────────────────────────────────────────── */
+
+/** POST /api/ai/decks — gera slides. */
+aiRouter.post('/decks', async (req, res) => {
+  const body = deckSchema.parse(req.body);
+  res.json(await withCredit(req.uid!, 'slides', () => generateDeck(requireDb(), req.uid!, body)));
+});
+
+/** POST /api/ai/teach/evaluate — avalia a fala (ensino oral). */
+aiRouter.post('/teach/evaluate', async (req, res) => {
+  const body = evaluateSchema.parse(req.body);
+  res.json(await withCredit(req.uid!, 'avaliacao_oral', () => evaluateTeaching(requireDb(), req.uid!, body)));
+});
+
+/** Perguntas e reações da Tayna: rápidas e frequentes, então limitadas por hora (não gastam o limite diário). */
+const taynaLimit = (uid: string) => rateLimitOrThrow(`tayna:${uid}`, 120, 3600_000, 'A Tayna precisa de uma pausa: muitas perguntas na última hora.');
+
+aiRouter.post('/tayna/question', async (req, res) => {
+  const body = questionSchema.parse(req.body);
+  if (!isAiConfigured) throw new HttpError(503, 'A IA ainda não foi configurada no servidor (GEMINI_API_KEY).');
+  taynaLimit(req.uid!);
+  res.json(await taynaQuestion(requireDb(), req.uid!, body));
+});
+
+aiRouter.post('/tayna/answer', async (req, res) => {
+  const body = answerSchema.parse(req.body);
+  if (!isAiConfigured) throw new HttpError(503, 'A IA ainda não foi configurada no servidor (GEMINI_API_KEY).');
+  taynaLimit(req.uid!);
+  res.json(await taynaAnswer(body));
+});
+
+/** POST /api/ai/tayna/feedback — feedback final da sessão com a Tayna. */
+aiRouter.post('/tayna/feedback', async (req, res) => {
+  const body = feedbackSchema.parse(req.body);
+  res.json(await withCredit(req.uid!, 'tayna', () => taynaFeedback(requireDb(), req.uid!, body)));
 });

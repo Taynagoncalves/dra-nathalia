@@ -89,16 +89,30 @@ async function callGemini<S extends z.ZodType>(req: StructuredRequest<S>): Promi
       },
     });
   const request = async (structured: boolean) => {
-    for (let i = 0; ; i++) {
-      model = models[i]!;
-      try {
-        return await send(structured);
-      } catch (err) {
-        const busy = err instanceof GeminiApiError && [404, 500, 503].includes(err.status);
-        if (!busy || i === models.length - 1) throw err;
-        console.warn(`Gemini ${model} indisponível (${(err as GeminiApiError).status}); tentando ${models[i + 1]}.`);
+    // Sobrecarregado (503), indisponível (404/500) ou no limite por minuto (429): tenta o próximo modelo
+    // (cada um tem cota própria). Se TODOS estiverem só no limite (429), espera 8 s e tenta mais uma rodada.
+    for (let round = 0; round < 2; round++) {
+      let lastErr: unknown;
+      let onlyRateLimited = true;
+      for (const m of models) {
+        model = m;
+        try {
+          return await send(structured);
+        } catch (err) {
+          const status = err instanceof GeminiApiError ? err.status : 0;
+          if (![404, 429, 500, 503].includes(status)) throw err;
+          console.warn(`Gemini ${m} indisponível (${status}).`);
+          lastErr = err;
+          if (status !== 429) onlyRateLimited = false;
+        }
       }
+      if (round === 0 && onlyRateLimited) {
+        await new Promise((r) => setTimeout(r, 8000));
+        continue;
+      }
+      throw lastErr;
     }
+    throw new Error('Gemini indisponível');
   };
   try {
     let res;

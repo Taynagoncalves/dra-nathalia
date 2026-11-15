@@ -25,7 +25,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!firebaseAuth) return;
     return onAuthStateChanged(firebaseAuth, async (u) => {
       setUser(u);
-      if (!u) {
+      if (!u || u.isAnonymous) {
+        // convidados da "Tayna ao vivo" entram anônimos e não têm perfil
         setProfile(null);
         setLoading(false);
         return;

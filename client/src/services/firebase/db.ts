@@ -20,6 +20,7 @@ export type UserCollection =
   | 'notifications'
   | 'notebookChats'
   | 'notebookItems'
+  | 'decks'
   | 'pushSubscriptions';
 
 export const userCol = (uid: string, name: UserCollection) => collection(getDb(), 'users', uid, name);

@@ -26,6 +26,10 @@ const CalendarPage = lazy(() => import('@/pages/calendar/CalendarPage'));
 const QuizzesPage = lazy(() => import('@/pages/quizzes/QuizzesPage'));
 const QuizPage = lazy(() => import('@/pages/quizzes/QuizPage'));
 const NotebookHome = lazy(() => import('@/pages/notebook/NotebookHome'));
+const TeacherHome = lazy(() => import('@/pages/teacher/TeacherHome'));
+const DeckEditor = lazy(() => import('@/pages/teacher/DeckEditor'));
+const PresentPage = lazy(() => import('@/pages/teacher/PresentPage'));
+const LiveGuest = lazy(() => import('@/pages/live/LiveGuest'));
 const ThemePreview = lazy(() => import('@/pages/ThemePreview'));
 
 const page = (node: ReactNode) => (
@@ -73,6 +77,9 @@ const appRoutes: RouteObject[] = [
           { path: '/quizzes', element: page(<QuizzesPage />) },
           { path: '/quizzes/:quizId', element: page(<QuizPage />) },
           { path: '/caderno', element: page(<NotebookHome />) },
+          { path: '/professora', element: page(<TeacherHome />) },
+          { path: '/professora/:deckId', element: page(<DeckEditor />) },
+          { path: '/professora/:deckId/apresentar', element: page(<PresentPage />) },
           { path: '/desempenho', element: page(<PerformancePage />) },
           { path: '/perfil', element: page(<Profile />) },
           { path: '/em-breve/:slug', element: page(<ComingSoon />) },
@@ -81,6 +88,9 @@ const appRoutes: RouteObject[] = [
     ],
   },
   themePreviewRoute,
+  // "Tayna de verdade": quem pergunta entra sem conta
+  { path: '/ao-vivo', element: <Suspense fallback={<FullPageSpinner />}><LiveGuest /></Suspense> },
+  { path: '/ao-vivo/:code', element: <Suspense fallback={<FullPageSpinner />}><LiveGuest /></Suspense> },
   { path: '*', element: <NotFound /> },
 ];
 
