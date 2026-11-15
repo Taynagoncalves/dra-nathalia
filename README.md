@@ -123,8 +123,11 @@ Preencha os valores pedidos no painel.
 
 | | Site (Static Site) | API (Web Service, Node) |
 |---|---|---|
-| Build command | `npm ci && npm run build -w client` | `npm ci && npm run build -w server` |
-| Publish dir / Start | `client/dist` | `npm start -w server` |
+| Runtime | Static | **Node** |
+| Root Directory | `client` | `server` |
+| Build command | `npm install && npm run build` | `npm install && npm run build` |
+| Publish directory / Start command | `dist` | `npm start` |
+| Health check path | — | `/api/health` |
 | Variáveis | todas as `VITE_*` do `client/.env.example` + `VITE_API_URL` = URL da API | as do `server/.env.example`, com `CLIENT_ORIGIN` = URL do site |
 
 Depois de criar, **não esqueça**:
