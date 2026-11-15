@@ -1,0 +1,82 @@
+import {
+  Baby,
+  Bookmark,
+  BookOpen,
+  Brain,
+  Briefcase,
+  Building2,
+  Calculator,
+  Coins,
+  FileSignature,
+  FileText,
+  Folder,
+  Gavel,
+  Gem,
+  Globe,
+  GraduationCap,
+  Handshake,
+  HeartPulse,
+  House,
+  Landmark,
+  Languages,
+  Laptop,
+  Leaf,
+  Library,
+  Lightbulb,
+  Microscope,
+  PenLine,
+  Scale,
+  ScrollText,
+  Shield,
+  Stamp,
+  Star,
+  Target,
+  Users,
+  type LucideIcon,
+} from 'lucide-react';
+
+/**
+ * Ícones disponíveis para projetos, matérias e pastas.
+ * O Firestore guarda só o NOME (ex.: 'Scale'); aqui ele vira o componente.
+ */
+export const ICONS: Record<string, LucideIcon> = {
+  BookOpen,
+  Scale,
+  Gavel,
+  Landmark,
+  ScrollText,
+  FileSignature,
+  Stamp,
+  Handshake,
+  Shield,
+  Building2,
+  Briefcase,
+  Coins,
+  Calculator,
+  House,
+  Baby,
+  Users,
+  HeartPulse,
+  Leaf,
+  Globe,
+  Languages,
+  GraduationCap,
+  Library,
+  FileText,
+  PenLine,
+  Brain,
+  Lightbulb,
+  Microscope,
+  Laptop,
+  Target,
+  Star,
+  Bookmark,
+  Gem,
+  Folder,
+};
+
+export const ICON_NAMES = Object.keys(ICONS);
+
+export function iconByName(name: string | null | undefined, fallback: LucideIcon = BookOpen): LucideIcon {
+  return (name && ICONS[name]) || fallback;
+}

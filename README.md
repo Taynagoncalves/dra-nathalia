@@ -179,7 +179,7 @@ Todas as rotas, exceto `/api/health`, exigem `Authorization: Bearer <Firebase ID
 
 - [x] Parte 1 — Setup, autenticação e sistema de temas
 - [x] Parte 2 — Layout (sidebar) e perfil
-- [ ] Parte 3 — Projetos, matérias, assuntos e timer de estudo
+- [x] Parte 3 — Projetos, matérias, assuntos e timer de estudo
 - [ ] Parte 4 — Materiais com pastas (4a pastas · 4b upload · 4c visualização · 4d organização)
 - [ ] Parte 5 — Banco de questões
 - [ ] Parte 6 — Caderno de erros

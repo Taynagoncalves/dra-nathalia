@@ -22,6 +22,9 @@ const MESSAGES: Record<string, string> = {
 /** Converte erros do Firebase (e outros) em mensagens em português. */
 export function friendlyError(err: unknown, fallback = 'Algo deu errado. Tente novamente.'): string {
   const code = (err as { code?: string })?.code;
+  if (code === 'failed-precondition' && String((err as Error).message).includes('index')) {
+    return 'Falta publicar os índices do Firestore: rode "firebase deploy --only firestore:indexes" (veja o README) e aguarde alguns minutos.';
+  }
   if (code && MESSAGES[code]) return MESSAGES[code];
   if (err instanceof Error && err.message && !err.message.startsWith('Firebase')) return err.message;
   return fallback;

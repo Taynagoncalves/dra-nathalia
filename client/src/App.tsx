@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import { RouterProvider } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { StudyTimerProvider } from '@/contexts/StudyTimerContext';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { router } from './router';
 
@@ -41,7 +42,9 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ThemeProvider>
-          <RouterProvider router={router} />
+          <StudyTimerProvider>
+            <RouterProvider router={router} />
+          </StudyTimerProvider>
           <ThemedToaster />
         </ThemeProvider>
       </AuthProvider>

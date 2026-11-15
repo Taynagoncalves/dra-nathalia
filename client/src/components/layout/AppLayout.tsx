@@ -2,6 +2,7 @@ import { BookOpen, Menu } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
+import { StudyTimerWidget } from '@/components/timer/StudyTimerWidget';
 import { Button } from '@/components/ui/Button';
 import { MobileDrawer } from './MobileDrawer';
 import { MobileTabBar } from './MobileTabBar';
@@ -58,8 +59,9 @@ export function AppLayout() {
               Estudos
             </Link>
 
-            {/* Parte 3: o timer de estudo global entra aqui. */}
-            <div id="topbar-slot" className="flex-1" />
+            <div className="flex flex-1 justify-end">
+              <StudyTimerWidget />
+            </div>
 
             <ThemeToggle />
             <UserMenu />
