@@ -119,7 +119,7 @@ export function useSubjectMutations(projectId: string) {
       onError,
     }),
     remove: useMutation({
-      mutationFn: (id: string) => deleteSubject(uid, id),
+      mutationFn: (id: string) => deleteSubject(id),
       onSuccess: () => {
         invalidate();
         qc.invalidateQueries({ queryKey: keys.topicsRoot(uid) });

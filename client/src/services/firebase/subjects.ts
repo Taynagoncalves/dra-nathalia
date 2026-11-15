@@ -11,7 +11,8 @@ import {
 } from 'firebase/firestore';
 import type { Subject } from '@/types/models';
 import { getDb } from './app';
-import { chunk, docsWithId, docWithId, userCol, userDoc } from './db';
+import { apiFetch } from '../api';
+import { docsWithId, docWithId, userCol, userDoc } from './db';
 
 export interface SubjectInput {
   name: string;
@@ -57,15 +58,9 @@ export async function reorderSubjects(uid: string, orderedIds: string[]) {
 }
 
 /**
- * Exclui a matéria e os assuntos dela.
- * Parte 4 em diante: também pastas, materiais (e arquivos no Cloudinary), questões e erros.
+ * Exclui a matéria e tudo dela (assuntos, pastas, materiais, anotações, questões,
+ * erros e os arquivos no Cloudinary). Feito no server, que tem acesso ao Cloudinary.
  */
-export async function deleteSubject(uid: string, id: string) {
-  const topics = await getDocs(query(userCol(uid, 'topics'), where('subjectId', '==', id)));
-  const refs = [...topics.docs.map((d) => d.ref), userDoc(uid, 'subjects', id)];
-  for (const part of chunk(refs)) {
-    const batch = writeBatch(getDb());
-    part.forEach((ref) => batch.delete(ref));
-    await batch.commit();
-  }
+export async function deleteSubject(id: string) {
+  await apiFetch(`/subjects/${id}`, { method: 'DELETE' });
 }

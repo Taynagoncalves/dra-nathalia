@@ -171,7 +171,7 @@ export default function ProjectDetail() {
         open={!!deletingSubject}
         onClose={() => setDeletingSubject(undefined)}
         title={`Excluir “${deletingSubject?.name}”?`}
-        description="A matéria e todos os assuntos dela serão excluídos. Esta ação não pode ser desfeita."
+        description="A matéria será excluída com assuntos, pastas, materiais (inclusive os arquivos enviados), anotações e questões. O tempo já estudado continua no histórico. Esta ação não pode ser desfeita."
         confirmLabel="Excluir matéria"
         danger
         loading={remove.isPending}

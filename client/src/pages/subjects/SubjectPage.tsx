@@ -11,6 +11,7 @@ import { Tabs } from '@/components/ui/Tabs';
 import { useStudyTimer } from '@/contexts/StudyTimerContext';
 import { useProjects, useSubject } from '@/hooks/useStudyData';
 import NotFound from '../NotFound';
+import { MaterialsPanel } from './MaterialsPanel';
 import { TopicsPanel } from './TopicsPanel';
 
 type Tab = 'materiais' | 'assuntos' | 'questoes';
@@ -71,15 +72,7 @@ export default function SubjectPage() {
       />
 
       {tab === 'assuntos' && <TopicsPanel subjectId={s.id} />}
-      {tab === 'materiais' && (
-        <Card>
-          <EmptyState
-            icon={FolderOpen}
-            title="Materiais chegam na Parte 4"
-            description="Pastas coloridas, upload de PDF, Word, slides e imagens, links e anotações."
-          />
-        </Card>
-      )}
+      {tab === 'materiais' && <MaterialsPanel subjectId={s.id} subjectName={s.name} />}
       {tab === 'questoes' && (
         <Card>
           <EmptyState icon={ListChecks} title="Questões chegam na Parte 5" description="Banco de questões desta matéria." />

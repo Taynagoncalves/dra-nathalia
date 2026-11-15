@@ -153,7 +153,9 @@ Todas as rotas, exceto `/api/health`, exigem `Authorization: Bearer <Firebase ID
 | GET | `/api/health` | status (público) |
 | POST | `/api/cloudinary/signature` | `{ purpose: 'material', subjectId }` ou `{ purpose: 'avatar' }` |
 | DELETE | `/api/cloudinary/:publicId?resourceType=image\|raw` | exclui um arquivo do usuário |
-| POST | `/api/cloudinary/delete-batch` | `{ items: [{ publicId, resourceType }] }` (excluir pasta) |
+| POST | `/api/cloudinary/delete-batch` | `{ items: [{ publicId, resourceType }] }` |
+| DELETE | `/api/folders/:id?mode=moveUp|cascade` | exclui pasta (conteúdo sobe um nível, ou apaga tudo + arquivos) |
+| DELETE | `/api/subjects/:id` | exclui a matéria com tudo dela (inclusive os arquivos) |
 
 ---
 
@@ -180,7 +182,7 @@ Todas as rotas, exceto `/api/health`, exigem `Authorization: Bearer <Firebase ID
 - [x] Parte 1 — Setup, autenticação e sistema de temas
 - [x] Parte 2 — Layout (sidebar) e perfil
 - [x] Parte 3 — Projetos, matérias, assuntos e timer de estudo
-- [ ] Parte 4 — Materiais com pastas (4a pastas · 4b upload · 4c visualização · 4d organização)
+- [x] Parte 4 — Materiais com pastas (4a pastas · 4b upload · 4c visualização · 4d organização)
 - [ ] Parte 5 — Banco de questões
 - [ ] Parte 6 — Caderno de erros
 - [ ] Parte 7 — Calendário

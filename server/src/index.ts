@@ -7,6 +7,8 @@ import { isFirebaseAdminConfigured } from './lib/firebaseAdmin.js';
 import { requireAuth } from './middleware/auth.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { cloudinaryRouter } from './routes/cloudinary.js';
+import { foldersRouter } from './routes/folders.js';
+import { subjectsRouter } from './routes/subjects.js';
 
 const app = express();
 
@@ -26,6 +28,8 @@ app.get('/api/health', (_req, res) => {
 // Daqui para baixo, TODA rota exige o Firebase ID Token.
 app.use('/api', requireAuth);
 app.use('/api/cloudinary', cloudinaryRouter);
+app.use('/api/folders', foldersRouter);
+app.use('/api/subjects', subjectsRouter);
 
 app.use('/api', (_req, res) => {
   res.status(404).json({ error: 'Rota não encontrada.' });

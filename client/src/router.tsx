@@ -17,6 +17,7 @@ const ComingSoon = lazy(() => import('@/pages/ComingSoon'));
 const Projects = lazy(() => import('@/pages/projects/Projects'));
 const ProjectDetail = lazy(() => import('@/pages/projects/ProjectDetail'));
 const SubjectPage = lazy(() => import('@/pages/subjects/SubjectPage'));
+const NoteEditorPage = lazy(() => import('@/pages/subjects/NoteEditorPage'));
 const UnderConstruction = lazy(() => import('@/pages/UnderConstruction'));
 const ThemePreview = lazy(() => import('@/pages/ThemePreview'));
 
@@ -57,6 +58,7 @@ const appRoutes: RouteObject[] = [
           { path: '/projetos', element: page(<Projects />) },
           { path: '/projetos/:projectId', element: page(<ProjectDetail />) },
           { path: '/materias/:subjectId', element: page(<SubjectPage />) },
+          { path: '/materias/:subjectId/anotacoes/:noteId', element: page(<NoteEditorPage />) },
           { path: '/questoes/*', element: page(<UnderConstruction title="Questões" part={5} />) },
           { path: '/erros', element: page(<UnderConstruction title="Caderno de Erros" part={6} />) },
           { path: '/calendario', element: page(<UnderConstruction title="Calendário" part={7} />) },
