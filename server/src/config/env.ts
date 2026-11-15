@@ -24,7 +24,9 @@ const schema = z.object({
   // Sem AI_PROVIDER, usa o que tiver chave (Gemini primeiro).
   AI_PROVIDER: z.preprocess((v) => (v === '' ? undefined : v), z.enum(['gemini', 'anthropic']).optional()),
   GEMINI_API_KEY: optional,
-  GEMINI_MODEL: z.string().default('gemini-flash-latest'),
+  GEMINI_MODEL: z.string().default('gemini-3.6-flash'),
+  /** modelos reserva (separados por vírgula), usados se o principal estiver sobrecarregado */
+  GEMINI_FALLBACK_MODELS: z.string().default('gemini-3.5-flash,gemini-3.8-flash'),
   ANTHROPIC_API_KEY: optional,
   AI_MODEL: z.string().default('claude-opus-5-5'),
   /** gerações de IA por usuário por dia (controle de custo) */

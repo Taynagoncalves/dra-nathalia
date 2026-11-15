@@ -179,7 +179,7 @@ A IA roda **só no server** (`server/src/ai/`); a chave nunca vai para o navegad
 |---|---|---|
 | Custo | **gratuito** (plano free do Google AI Studio, com limites por minuto e por dia) | pago por uso |
 | Chave | <https://aistudio.google.com/apikey> (conta Google, sem cartão) | <https://console.anthropic.com> → API Keys |
-| Variáveis | `AI_PROVIDER=gemini`, `GEMINI_API_KEY`, `GEMINI_MODEL` | `AI_PROVIDER=anthropic`, `ANTHROPIC_API_KEY`, `AI_MODEL` |
+| Variáveis | `AI_PROVIDER=gemini`, `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_FALLBACK_MODELS` | `AI_PROVIDER=anthropic`, `ANTHROPIC_API_KEY`, `AI_MODEL` |
 
 1. Gere a chave do Gemini e coloque em `server/.env` (e nas variáveis do server no Render): `GEMINI_API_KEY=...`
 2. Reinicie o server. `GET /api/health` deve mostrar `"ai": true`.
@@ -189,8 +189,8 @@ A IA roda **só no server** (`server/src/ai/`); a chave nunca vai para o navegad
 > **não envie documentos com dados pessoais de terceiros** (ex.: peças reais de clientes). No plano pago do
 > Gemini ou com o Claude, os dados não são usados para treino.
 
-`AI_DAILY_LIMIT` (padrão 30) limita os usos por pessoa por dia; `GEMINI_MODEL=gemini-flash-latest` aponta
-sempre para o modelo Flash atual. Se o plano gratuito atingir o limite do Google, o site avisa para tentar
+`AI_DAILY_LIMIT` (padrão 30) limita os usos por pessoa por dia. `GEMINI_MODEL` (padrão `gemini-3.6-flash`) é o
+modelo principal; `GEMINI_FALLBACK_MODELS` são reservas usadas se ele estiver sobrecarregado. Se o plano gratuito atingir o limite do Google, o site avisa para tentar
 mais tarde.
 
 **Como funciona**

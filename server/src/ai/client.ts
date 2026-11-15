@@ -72,9 +72,12 @@ let geminiSchemaUnsupported = false;
 
 async function callGemini<S extends z.ZodType>(req: StructuredRequest<S>): Promise<Attempt> {
   const schema = jsonSchemaOf(req.schema);
-  const request = (structured: boolean) =>
+  // Modelo principal + reservas: se um estiver sobrecarregado (503) ou indisponível (404/500), tenta o próximo.
+  const models = [env.GEMINI_MODEL, ...env.GEMINI_FALLBACK_MODELS.split(',').map((m) => m.trim()).filter(Boolean)];
+  let model = models[0]!;
+  const send = (structured: boolean) =>
     gemini!.models.generateContent({
-      model: env.GEMINI_MODEL,
+      model,
       contents: [{ role: 'user', parts: req.content.map((c) => ({ text: c.text })) }],
       config: {
         systemInstruction: structured
@@ -85,6 +88,18 @@ async function callGemini<S extends z.ZodType>(req: StructuredRequest<S>): Promi
         maxOutputTokens: req.maxTokens ?? 16000,
       },
     });
+  const request = async (structured: boolean) => {
+    for (let i = 0; ; i++) {
+      model = models[i]!;
+      try {
+        return await send(structured);
+      } catch (err) {
+        const busy = err instanceof GeminiApiError && [404, 500, 503].includes(err.status);
+        if (!busy || i === models.length - 1) throw err;
+        console.warn(`Gemini ${model} indisponível (${(err as GeminiApiError).status}); tentando ${models[i + 1]}.`);
+      }
+    }
+  };
   try {
     let res;
     try {
@@ -111,7 +126,8 @@ async function callGemini<S extends z.ZodType>(req: StructuredRequest<S>): Promi
       }
       if (err.status === 400 && /api key/i.test(err.message)) throw new HttpError(503, 'A chave da IA (GEMINI_API_KEY) é inválida.');
       if (err.status === 401 || err.status === 403) throw new HttpError(503, 'A chave da IA (GEMINI_API_KEY) é inválida ou não tem acesso a este modelo.');
-      if (err.status === 404) throw new HttpError(503, `O modelo ${env.GEMINI_MODEL} não está disponível. Ajuste GEMINI_MODEL.`);
+      if (err.status === 404) throw new HttpError(503, `Nenhum dos modelos configurados está disponível (${models.join(', ')}). Ajuste GEMINI_MODEL.`);
+      if (err.status === 503) throw new HttpError(503, 'A IA gratuita está sobrecarregada agora. Tente de novo em alguns minutos.');
       console.error(`Erro da API do Gemini (${err.status}):`, err.message);
       throw new HttpError(502, 'A IA está indisponível no momento. Tente de novo.');
     }
