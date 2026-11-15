@@ -26,6 +26,7 @@ export const MAIN_NAV: NavItem[] = [
   { to: '/', label: 'Dashboard', short: 'Início', icon: LayoutDashboard },
   { to: '/projetos', label: 'Projetos', icon: FolderKanban },
   { to: '/questoes', label: 'Questões', icon: ListChecks },
+  { to: '/quizzes', label: 'Quizzes com IA', short: 'Quizzes', icon: Sparkles },
   { to: '/erros', label: 'Caderno de Erros', short: 'Erros', icon: NotebookPen },
   { to: '/calendario', label: 'Calendário', icon: CalendarDays },
   { to: '/desempenho', label: 'Desempenho', icon: ChartLine },
@@ -52,14 +53,6 @@ export const SOON_NAV: SoonItem[] = [
     stage: 'Etapa 2',
     description:
       'Um chat dentro de cada matéria que responde com base nos seus materiais e indica a fonte (“Apostila X, p. 12”).',
-  },
-  {
-    slug: 'quizzes',
-    label: 'Quizzes com IA',
-    icon: Sparkles,
-    stage: 'Etapa 2',
-    description:
-      'Gere quizzes a partir de um PDF, de uma pasta, de uma matéria ou dos seus erros — com gabarito comentado e o trecho de origem.',
   },
   {
     slug: 'professora',

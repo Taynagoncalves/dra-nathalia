@@ -3,6 +3,7 @@ import { useCallback, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { friendlyError } from '@/lib/firebaseErrors';
 import { uploadToCloudinary, validateFile } from '@/services/cloudinary/upload';
+import { processMaterialForAi } from '@/services/ai';
 import { createFileMaterial } from '@/services/firebase/materials';
 import { materialKeys } from './useMaterials';
 import { useUid } from './useUid';
@@ -50,9 +51,13 @@ export function useUploadQueue(subjectId: string) {
         { signal: controller.signal, onProgress: (progress) => patch(item.id, { progress }) },
       )
         .then((asset) => createFileMaterial(uid, subjectId, item.folderId, asset))
-        .then(() => {
+        .then((materialId) => {
           patch(item.id, { status: 'concluido', progress: 100 });
           qc.invalidateQueries({ queryKey: materialKeys.materials(uid, subjectId) });
+          // Extrai o texto para a IA em segundo plano (status: Processando… → Pronto para IA)
+          processMaterialForAi(materialId)
+            .catch(() => {})
+            .finally(() => qc.invalidateQueries({ queryKey: materialKeys.materials(uid, subjectId) }));
         })
         .catch((err: unknown) => {
           if ((err as Error)?.name === 'AbortError') patch(item.id, { status: 'cancelado' });

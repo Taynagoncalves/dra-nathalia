@@ -1,7 +1,7 @@
-import { Sparkles, Star } from 'lucide-react';
+import { Loader2, Sparkles, Star } from 'lucide-react';
 import { useState, type MouseEvent } from 'react';
 import { ActionMenuButton, type Action } from '@/components/ui/ActionMenu';
-import { Badge, SoonBadge } from '@/components/ui/Badge';
+import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/lib/cn';
 import { readableTextOn } from '@/lib/color';
 import type { Material } from '@/types/models';
@@ -16,6 +16,8 @@ interface MaterialItemProps {
   /** caminho da pasta (mostrado nos resultados da busca) */
   location?: string;
   topicName?: string;
+  /** abre a configuração do quiz com IA */
+  onGenerateQuiz?: () => void;
 }
 
 /** Ícone do tipo (ou favicon do link) num quadrado colorido. */
@@ -62,23 +64,55 @@ function FavoriteButton({ active, onToggle, name }: { active: boolean; onToggle:
   );
 }
 
-function QuizSoon() {
+/** Materiais que a IA consegue ler. */
+export const quizzable = (m: Material) => m.kind === 'pdf' || m.kind === 'word' || m.kind === 'slides' || m.kind === 'note';
+/** Pronto para gerar quiz agora? (anotações são lidas na hora) */
+export const readyForAi = (m: Material) => m.kind === 'note' || m.aiStatus === 'pronto';
+
+/** Situação do material para a IA: Processando… / Pronto para IA / Sem texto. */
+export function AiStatusBadge({ material }: { material: Material }) {
+  if (!quizzable(material) || material.kind === 'note') return null;
+  if (material.aiStatus === 'processando')
+    return (
+      <Badge variant="neutral">
+        <Loader2 className="size-3 animate-spin" /> Processando…
+      </Badge>
+    );
+  if (material.aiStatus === 'pronto') return <Badge variant="success">Pronto para IA</Badge>;
+  if (material.aiStatus === 'erro')
+    return (
+      <span title={material.aiError}>
+        <Badge variant="warning">Sem texto p/ IA</Badge>
+      </span>
+    );
+  return null;
+}
+
+function QuizButton({ onClick, disabled }: { onClick: () => void; disabled: boolean }) {
   return (
-    <span title="Gerar quiz (Etapa 2)" className="inline-flex items-center gap-1 text-xs text-text-muted opacity-70">
-      <Sparkles className="size-3.5" aria-hidden />
-      <SoonBadge />
-    </span>
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      onPointerDown={(e) => e.stopPropagation()}
+      disabled={disabled}
+      title={disabled ? 'Aguarde o material ficar “Pronto para IA”' : 'Gerar quiz com IA'}
+      className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium text-primary-text hover:bg-primary-soft disabled:pointer-events-none disabled:text-text-muted disabled:opacity-60"
+    >
+      <Sparkles className="size-3.5" aria-hidden /> Gerar quiz
+    </button>
   );
 }
 
 const date = (m: Material) => m.updatedAt?.toDate?.().toLocaleDateString('pt-BR') ?? '';
 
 /** Card do modo grade. */
-export function MaterialCard({ material, onOpen, onToggleFavorite, actions, onContextMenu, location, topicName }: MaterialItemProps) {
+export function MaterialCard({ material, onOpen, onToggleFavorite, actions, onContextMenu, location, topicName, onGenerateQuiz }: MaterialItemProps) {
   const thumb = thumbnailOf(material);
   const [thumbFailed, setThumbFailed] = useState(false);
   const meta = KIND_META[material.kind];
-  const canQuiz = material.kind === 'pdf' || material.kind === 'word' || material.kind === 'note';
 
   return (
     <div onContextMenu={onContextMenu} className="group flex h-full flex-col overflow-hidden rounded-xl border border-border bg-surface transition-shadow hover:shadow-card">
@@ -100,6 +134,7 @@ export function MaterialCard({ material, onOpen, onToggleFavorite, actions, onCo
         </div>
         <div className="flex flex-wrap items-center gap-1">
           <Badge variant="neutral">{meta.label}</Badge>
+          <AiStatusBadge material={material} />
           {topicName && <Badge variant="primary">{topicName}</Badge>}
           {material.tags.slice(0, 2).map((t) => (
             <Badge key={t} variant="neutral">
@@ -109,7 +144,11 @@ export function MaterialCard({ material, onOpen, onToggleFavorite, actions, onCo
         </div>
         {location && <p className="truncate text-xs text-text-muted">em {location}</p>}
         <div className="mt-auto flex items-center justify-between pt-1">
-          {canQuiz ? <QuizSoon /> : <span className="text-xs text-text-muted">{date(material)}</span>}
+          {quizzable(material) && onGenerateQuiz ? (
+            <QuizButton onClick={onGenerateQuiz} disabled={!readyForAi(material)} />
+          ) : (
+            <span className="text-xs text-text-muted">{date(material)}</span>
+          )}
           <ActionMenuButton actions={actions} label={`Ações de ${material.title}`} className="-mr-1.5" />
         </div>
       </div>
@@ -118,7 +157,7 @@ export function MaterialCard({ material, onOpen, onToggleFavorite, actions, onCo
 }
 
 /** Linha do modo lista. */
-export function MaterialRow({ material, onOpen, onToggleFavorite, actions, onContextMenu, location, topicName }: MaterialItemProps) {
+export function MaterialRow({ material, onOpen, onToggleFavorite, actions, onContextMenu, location, topicName, onGenerateQuiz }: MaterialItemProps) {
   const meta = KIND_META[material.kind];
   return (
     <div onContextMenu={onContextMenu} className="group flex items-center gap-3 rounded-xl border border-border bg-surface px-3 py-2 hover:shadow-card">
@@ -132,6 +171,14 @@ export function MaterialRow({ material, onOpen, onToggleFavorite, actions, onCon
           {location && ` · em ${location}`}
         </span>
       </button>
+      <span className="hidden sm:block">
+        <AiStatusBadge material={material} />
+      </span>
+      {quizzable(material) && onGenerateQuiz && (
+        <span className="hidden sm:block">
+          <QuizButton onClick={onGenerateQuiz} disabled={!readyForAi(material)} />
+        </span>
+      )}
       <span className="hidden text-xs text-text-muted md:block">{date(material)}</span>
       <FavoriteButton active={material.favorite} onToggle={onToggleFavorite} name={material.title} />
       <ActionMenuButton actions={actions} label={`Ações de ${material.title}`} />

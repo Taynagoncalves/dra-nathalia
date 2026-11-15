@@ -98,7 +98,7 @@ export interface CloudinaryAsset {
 }
 
 /** Etapa 2: status do processamento de texto para a IA */
-export type AiStatus = 'pendente' | 'processando' | 'pronto' | 'erro';
+export type AiStatus = 'pendente' | 'processando' | 'pronto' | 'erro' | 'indisponivel';
 
 export interface Material extends WithId {
   subjectId: string;
@@ -114,6 +114,8 @@ export interface Material extends WithId {
   linkUrl?: string;
   /** Etapa 2 */
   aiStatus?: AiStatus;
+  /** motivo quando aiStatus = 'erro' | 'indisponivel' */
+  aiError?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -211,33 +213,84 @@ export interface CalendarEvent extends WithId {
   reminders?: Record<string, boolean>;
 }
 
-/* ── Etapa 2 (reservado) ─────────────────────────────────────────── */
+/* ── Etapa 2: quizzes com IA ─────────────────────────────────────── */
+
+export type QuizQuestionType = 'multipla' | 'certo_errado' | 'lacunas' | 'discursiva';
+export type QuizDifficulty = 'facil' | 'medio' | 'dificil' | 'pegadinha' | 'oab' | 'concurso';
+export type QuizMode = 'treino' | 'prova' | 'relampago';
+export type QuizFocus = 'geral' | 'artigos' | 'jurisprudencia' | 'conceitos';
+
+export interface QuizConfig {
+  count: number;
+  types: QuizQuestionType[];
+  difficulty: QuizDifficulty;
+  mode: QuizMode;
+  /** segundos por questão (modo relâmpago) */
+  timerSec?: number | null;
+  focus: QuizFocus;
+}
+
+/** De onde o quiz é gerado. */
+export type QuizSource =
+  | { type: 'material'; subjectId: string; materialIds: string[] }
+  | { type: 'folder'; subjectId: string; folderId: string }
+  | { type: 'subject'; subjectId: string; topicId?: string | null }
+  | { type: 'errors'; subjectId: string }
+  | { type: 'tema'; subjectId: string; theme: string }
+  | { type: 'quiz_erros'; subjectId: string; fromQuizId: string; indices: number[] };
+
+/** Questão gerada pela IA, guardada dentro do quiz. */
+export interface QuizItem {
+  type: QuizQuestionType;
+  statement: string;
+  options: string[];
+  /** índice ('0'…'4') em múltipla/lacunas; 'certo'|'errado'; ou resposta-modelo (discursiva) */
+  correctAnswer: string;
+  explanation: string;
+  /** por que cada alternativa está certa ou errada */
+  optionExplanations: string[];
+  sourceMaterialId: string | null;
+  sourceMaterialTitle: string | null;
+  sourcePage: number | null;
+  /** trecho de origem (citação do material) */
+  sourceQuote: string | null;
+  topicId: string | null;
+  topicName: string;
+  difficulty: 'facil' | 'medio' | 'dificil';
+}
 
 export interface Quiz extends WithId {
   title: string;
   subjectId: string;
   topicId?: string | null;
+  source: QuizSource;
   sourceMaterialIds: string[];
   sourceFolderId?: string | null;
-  config: {
-    count: number;
-    types: string[];
-    difficulty: string;
-    mode: 'treino' | 'prova' | 'relampago';
-    timerSec?: number;
-  };
+  config: QuizConfig;
+  items: QuizItem[];
+  /** questões salvas no banco de questões */
   questionIds: string[];
   status: 'gerando' | 'pronto' | 'erro';
-  createdAt: Timestamp;
+  error?: string;
+  /** gerado sem material do aluno (tema livre) */
+  noMaterial?: boolean;
+  /** material grande demais: a IA usou trechos selecionados */
+  truncated?: boolean;
+  contested?: number[];
+  result?: { score: number; total: number; correct: number; timeSpentSec: number; resultId: string };
+  createdAt: Timestamp | null;
 }
 
 export interface QuizResult extends WithId {
   quizId: string;
+  subjectId: string | null;
   score: number;
   total: number;
   correct: number;
   timeSpentSec: number;
   weakTopics: string[];
+  byTopic: { topic: string; correct: number; total: number }[];
   feedback: string;
-  createdAt: Timestamp;
+  contested: number[];
+  createdAt: Timestamp | null;
 }

@@ -11,11 +11,13 @@ service cloud.firestore {
     match /users/{uid} {
       allow read, write: if isOwner(uid);
 
-      // Todas as subcoleções (projects, subjects, folders, materials, notes,
-      // questions, attempts, quizzes, errors, studySessions, goals, events…)
-      // e subcoleções aninhadas (ex.: materials/{id}/chunks na Etapa 2).
-      match /{document=**} {
-        allow read, write: if isOwner(uid);
+      // Subcoleções (projects, subjects, folders, materials, notes, questions,
+      // attempts, quizzes, errors, studySessions, goals, events, notifications…)
+      // e subcoleções aninhadas (ex.: materials/{id}/chunks).
+      // Exceção: aiUsage, que só o server escreve (é o limite diário da IA).
+      match /{collection}/{document=**} {
+        allow read: if isOwner(uid);
+        allow write: if isOwner(uid) && collection != 'aiUsage';
       }
     }
 

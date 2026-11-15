@@ -171,6 +171,41 @@ por 60 dias — se isso acontecer, é só reativar na aba Actions.)
 
 ---
 
+## 5. Inteligência Artificial (Etapa 2)
+
+A IA roda **só no server** (`server/src/ai/`), com a API do Claude (Anthropic). A chave nunca vai para o navegador.
+
+1. Crie uma conta em <https://console.anthropic.com>, adicione créditos em **Billing** e gere uma chave em **API Keys**.
+2. Coloque em `server/.env` (e nas variáveis do server no Render): `ANTHROPIC_API_KEY=...`
+3. Reinicie o server. `GET /api/health` deve mostrar `"ai": true`.
+
+| Variável | Padrão | Para quê |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | — | chave da API (obrigatória para a IA) |
+| `AI_MODEL` | `claude-opus-5-5` | modelo usado |
+| `AI_DAILY_LIMIT` | `30` | usos da IA por pessoa por dia (controle de custo) |
+
+**Como funciona**
+
+- **Materiais → texto:** ao enviar PDF, Word (.docx) ou PowerPoint (.pptx), o server extrai o texto
+  (pdf-parse, mammoth, jszip) e guarda em `materials/{id}/chunks` (texto, página, ordem). O card mostra
+  *Processando…* → *Pronto para IA*. Anotações são lidas na hora. PDFs escaneados (só imagem) e .doc/.ppt
+  antigos aparecem como *Sem texto p/ IA*.
+- **Quiz com IA:** de um material, de uma pasta (com subpastas), da matéria/assunto, do caderno de erros, de
+  um tema livre ou "só o que errei". Modos treino, prova e relâmpago; múltipla escolha, certo/errado,
+  lacunas e discursiva (corrigida pela IA). Cada questão traz gabarito comentado, explicação de cada
+  alternativa e o **trecho de origem** com link para o material na página certa.
+- **Respostas em JSON validado:** saídas estruturadas + zod; se vier inválido, tenta de novo uma vez.
+- **Integridade jurídica:** o prompt proíbe inventar artigos, súmulas e julgados e pede para dizer quando
+  não há certeza (`server/src/ai/prompts.ts`).
+- **Recusas:** usa o *fallback* do servidor (`fallbacks: "default"`): se o modelo recusar um pedido por
+  política de segurança, a API tenta automaticamente num modelo alternativo.
+- **Custo:** cada quiz lê no máximo ~180 mil caracteres do material (~45 mil tokens). Com o modelo padrão,
+  um quiz de 10 questões custa em torno de US$ 0,20–0,40. O limite diário (`AI_DAILY_LIMIT`) e o contador
+  em `users/{uid}/aiUsage` (só o server escreve) evitam surpresas. Falhas não contam no limite.
+
+---
+
 ## API (`/server`)
 
 Todas as rotas, exceto `/api/health`, exigem `Authorization: Bearer <Firebase ID Token>`.
@@ -186,6 +221,11 @@ Todas as rotas, exceto `/api/health`, exigem `Authorization: Bearer <Firebase ID
 | GET | `/api/push/public-key` | chave VAPID pública |
 | POST | `/api/push/subscribe` · `/api/push/unsubscribe` · `/api/push/test` | notificações do aparelho |
 | POST | `/api/cron/lembretes` | rotina de lembretes (cabeçalho `x-cron-secret`, sem login) |
+| GET | `/api/ai/status` | IA configurada? usos de hoje / limite |
+| POST | `/api/ai/materials/:id/process` | extrai o texto do material para a IA |
+| POST | `/api/ai/quizzes` | começa a gerar um quiz (status acompanhado pelo Firestore) |
+| POST | `/api/ai/quizzes/:id/finish` | resultado + feedback da IA + categoria sugerida dos erros |
+| POST | `/api/ai/grade` | corrige uma resposta discursiva |
 | DELETE | `/api/projects/:id` | exclui o projeto com todas as matérias e o conteúdo delas |
 
 ---
@@ -222,4 +262,11 @@ Todas as rotas, exceto `/api/health`, exigem `Authorization: Bearer <Firebase ID
 - [x] Parte 9 — Dashboard
 - [x] Extras — cor principal personalizável, excluir projeto, app instalável (PWA) com ícone, notificações e lembretes
 
-**Etapa 1 concluída.** Próxima: Etapa 2 (IA).
+**Etapa 1 concluída.**
+
+### Etapa 2 (IA)
+
+- [x] Base da IA: módulo `server/ai`, extração de texto em trechos, JSON validado, limite diário
+- [x] Gerador de Quiz com IA (todas as origens, modos, correção de discursivas, feedback, contestar, salvar no banco)
+- [ ] Assistente de estudos (chat na matéria, com fontes)
+- [ ] Resumos automáticos, revisões inteligentes e “O que estudar agora?” com IA

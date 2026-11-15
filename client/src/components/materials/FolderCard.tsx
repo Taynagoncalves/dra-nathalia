@@ -1,7 +1,6 @@
 import { Folder, Sparkles } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { MouseEvent, ReactNode } from 'react';
-import { SoonBadge } from '@/components/ui/Badge';
 import { cn } from '@/lib/cn';
 import { readableTextOn, withAlpha } from '@/lib/color';
 
@@ -17,6 +16,8 @@ interface FolderCardProps {
   onContextMenu?: (e: MouseEvent) => void;
   /** destaque quando algo está sendo arrastado por cima */
   highlight?: boolean;
+  /** gerar quiz com IA desta pasta (e subpastas) */
+  onGenerateQuiz?: () => void;
   className?: string;
 }
 
@@ -34,6 +35,7 @@ export function FolderCard({
   onContextMenu,
   highlight,
   className,
+  onGenerateQuiz,
 }: FolderCardProps) {
   const fg = readableTextOn(color);
 
@@ -61,13 +63,20 @@ export function FolderCard({
           {itemCount === undefined ? 'Pasta' : `${itemCount} ${itemCount === 1 ? 'item' : 'itens'}`}
         </span>
         <div className="flex items-center gap-0.5">
-          <span
-            title="Gerar quiz desta pasta (Etapa 2)"
-            className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs text-text-muted opacity-70"
-          >
-            <Sparkles className="size-3.5" aria-hidden />
-            <SoonBadge />
-          </span>
+          {onGenerateQuiz && (
+            <button
+              type="button"
+              title="Gerar quiz desta pasta (inclui as subpastas)"
+              onClick={(e) => {
+                e.stopPropagation();
+                onGenerateQuiz();
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium text-primary-text hover:bg-primary-soft"
+            >
+              <Sparkles className="size-3.5" aria-hidden /> Quiz
+            </button>
+          )}
           {menu}
         </div>
       </div>

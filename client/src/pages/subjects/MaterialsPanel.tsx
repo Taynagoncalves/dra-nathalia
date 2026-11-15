@@ -39,14 +39,14 @@ import { DraggableFolder, DraggableMaterial, ExplorerBreadcrumb, parseDrag, pars
 import { FolderCard } from '@/components/materials/FolderCard';
 import { downloadUrl, KIND_META, KIND_ORDER } from '@/components/materials/kinds';
 import { LinkFormModal } from '@/components/materials/LinkFormModal';
-import { MaterialCard, MaterialRow } from '@/components/materials/MaterialCard';
+import { MaterialCard, MaterialRow, quizzable, readyForAi } from '@/components/materials/MaterialCard';
+import { QuizConfigModal } from '@/components/quiz/QuizConfigModal';
 import { MaterialEditModal } from '@/components/materials/MaterialEditModal';
 import { MaterialViewer } from '@/components/materials/MaterialViewer';
 import { MoveToDialog } from '@/components/materials/MoveToDialog';
 import { FolderFormModal } from '@/components/materials/FolderFormModal';
 import { UploadQueuePanel } from '@/components/materials/UploadQueuePanel';
 import { ActionMenuButton, ContextMenu, type Action, type ContextMenuState } from '@/components/ui/ActionMenu';
-import { SoonBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -62,7 +62,9 @@ import { useUploadQueue } from '@/hooks/useUploadQueue';
 import { cn } from '@/lib/cn';
 import { canMoveFolder, childrenMap, descendantIds, pathTo } from '@/lib/folderTree';
 import { allTags, explorerView, hasActiveFilters, NO_FILTERS, type SortKey, type ViewFilters } from '@/lib/materialsView';
-import type { Folder, Material } from '@/types/models';
+import type { Folder, Material, QuizSource } from '@/types/models';
+import { processMaterialForAi } from '@/services/ai';
+import { friendlyError } from '@/lib/firebaseErrors';
 
 type ViewMode = 'grade' | 'lista';
 const VIEW_KEY = 'materiais-visao';
@@ -98,6 +100,8 @@ export function MaterialsPanel({ subjectId, subjectName }: { subjectId: string; 
   const [linkOpen, setLinkOpen] = useState(false);
   const [editing, setEditing] = useState<Material | null>(null);
   const [viewing, setViewing] = useState<Material | null>(null);
+  const [viewPage, setViewPage] = useState<number | null>(null);
+  const [quizFor, setQuizFor] = useState<{ source: QuizSource; label: string } | null>(null);
   const [dragging, setDragging] = useState<{ kind: 'folder' | 'material'; label: string } | null>(null);
   const [fileOver, setFileOver] = useState(false);
   const fileDragDepth = useRef(0);
@@ -124,6 +128,29 @@ export function MaterialsPanel({ subjectId, subjectName }: { subjectId: string; 
     },
     [setParams],
   );
+
+  // Link direto para um material (ex.: trecho de origem de uma questão): ?abrir=ID&pagina=N
+  useEffect(() => {
+    const abrir = params.get('abrir');
+    if (!abrir || !materials.isSuccess) return;
+    const mat = allMaterials.find((x) => x.id === abrir);
+    setParams(
+      (p) => {
+        const next = new URLSearchParams(p);
+        next.delete('abrir');
+        next.delete('pagina');
+        return next;
+      },
+      { replace: true },
+    );
+    if (!mat) return;
+    if (mat.kind === 'note') navigate(`/materias/${subjectId}/anotacoes/${mat.id}`);
+    else if (mat.cloudinary) {
+      setViewPage(Number(params.get('pagina')) || null);
+      setViewing(mat);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params, materials.isSuccess]);
 
   // Pasta da URL foi excluída → volta para a raiz.
   useEffect(() => {
@@ -184,19 +211,40 @@ export function MaterialsPanel({ subjectId, subjectName }: { subjectId: string; 
     }
   };
 
-  const quizSoon: Action = { label: 'Gerar quiz', icon: <Sparkles className="size-4" />, onSelect: () => {}, disabled: true, badge: <SoonBadge /> };
+  /** Quiz com IA a partir de um material ou de uma pasta inteira (com subpastas). */
+  const quizFromMaterial = (mat: Material) => setQuizFor({ source: { type: 'material', subjectId, materialIds: [mat.id] }, label: `Material: ${mat.title}` });
+  const quizFromFolder = (f: Folder) => setQuizFor({ source: { type: 'folder', subjectId, folderId: f.id }, label: `Pasta: ${f.name} (com subpastas)` });
+
+  const prepareForAi = async (mat: Material) => {
+    const id = toast.loading(`Lendo “${mat.title}” para a IA…`);
+    try {
+      const r = await processMaterialForAi(mat.id);
+      if (r.status === 'pronto') toast.success('Pronto para a IA!', { id });
+      else toast.error(r.error ?? 'Não foi possível ler este arquivo.', { id });
+    } catch (err) {
+      toast.error(friendlyError(err), { id });
+    } finally {
+      materials.refetch();
+    }
+  };
 
   const folderActions = (f: Folder): Action[] => [
     { label: 'Abrir', icon: <FolderOpen className="size-4" />, onSelect: () => goTo(f.id) },
     { label: 'Renomear / cor', icon: <Pencil className="size-4" />, onSelect: () => setFolderForm({ folder: f }) },
     { label: 'Mover para…', icon: <FolderInput className="size-4" />, onSelect: () => setMoving({ kind: 'folder', folder: f }) },
-    { ...quizSoon, label: 'Gerar quiz desta pasta' },
+    { label: 'Gerar quiz desta pasta', icon: <Sparkles className="size-4" />, onSelect: () => quizFromFolder(f) },
     { label: 'Excluir', icon: <Trash2 className="size-4" />, onSelect: () => setDeletingFolder(f), danger: true, separator: true },
   ];
 
   const materialActions = (mat: Material): Action[] => {
     const download = downloadUrl(mat);
-    const canQuiz = mat.kind === 'pdf' || mat.kind === 'word' || mat.kind === 'note';
+    const aiAction: Action[] = !quizzable(mat)
+      ? []
+      : readyForAi(mat)
+        ? [{ label: 'Gerar quiz com IA', icon: <Sparkles className="size-4" />, onSelect: () => quizFromMaterial(mat) }]
+        : mat.aiStatus === 'processando'
+          ? [{ label: 'Processando para a IA…', icon: <Sparkles className="size-4" />, onSelect: () => {}, disabled: true }]
+          : [{ label: mat.aiStatus === 'erro' ? 'Tentar ler de novo para a IA' : 'Preparar para a IA', icon: <Sparkles className="size-4" />, onSelect: () => prepareForAi(mat) }];
     return [
       {
         label: mat.kind === 'link' ? 'Abrir link' : 'Abrir',
@@ -213,7 +261,7 @@ export function MaterialsPanel({ subjectId, subjectName }: { subjectId: string; 
       ...(download
         ? [{ label: 'Baixar', icon: <Download className="size-4" />, onSelect: () => window.open(download, '_blank', 'noopener') }]
         : []),
-      ...(canQuiz ? [quizSoon] : []),
+      ...aiAction,
       { label: 'Excluir', icon: <Trash2 className="size-4" />, onSelect: () => setDeletingMaterial(mat), danger: true, separator: true },
     ];
   };
@@ -474,6 +522,7 @@ export function MaterialsPanel({ subjectId, subjectName }: { subjectId: string; 
                               onOpen={() => goTo(f.id)}
                               onContextMenu={(e) => showContextMenu(e, folderActions(f))}
                               menu={<ActionMenuButton actions={folderActions(f)} label={`Ações da pasta ${f.name}`} />}
+                              onGenerateQuiz={() => quizFromFolder(f)}
                             />
                           ) : (
                             <FolderRow
@@ -507,6 +556,7 @@ export function MaterialsPanel({ subjectId, subjectName }: { subjectId: string; 
                       onContextMenu: (e: MouseEvent) => showContextMenu(e, materialActions(mat)),
                       location: filtersOn ? locationOf(mat.folderId) : undefined,
                       topicName: mat.topicId ? topicById.get(mat.topicId) : undefined,
+                      onGenerateQuiz: () => quizFromMaterial(mat),
                     };
                     return (
                       <li key={mat.id}>
@@ -551,7 +601,15 @@ export function MaterialsPanel({ subjectId, subjectName }: { subjectId: string; 
 
       <ContextMenu menu={contextMenu} onClose={closeContextMenu} />
       <UploadQueuePanel items={uploads.items} onCancel={uploads.cancel} onRetry={uploads.retry} onClear={uploads.clearFinished} />
-      <MaterialViewer material={viewing} onClose={() => setViewing(null)} />
+      <MaterialViewer
+        material={viewing}
+        page={viewPage}
+        onClose={() => {
+          setViewing(null);
+          setViewPage(null);
+        }}
+      />
+      <QuizConfigModal open={!!quizFor} onClose={() => setQuizFor(null)} source={quizFor?.source} sourceLabel={quizFor?.label} />
 
       <FolderFormModal
         open={!!folderForm}

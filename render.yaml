@@ -37,6 +37,13 @@ services:
         value: https://dra-nathalia.onrender.com
       - key: CRON_SECRET
         sync: false
+      # IA (Claude)
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: AI_MODEL
+        value: claude-opus-5-5
+      - key: AI_DAILY_LIMIT
+        value: "30"
 
   # ── Site (React, estático) ──────────────────────────────────────
   - type: web

@@ -2,11 +2,12 @@ import cors from 'cors';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
-import { env, isCloudinaryConfigured, isPushConfigured } from './config/env.js';
+import { env, isAiConfigured, isCloudinaryConfigured, isPushConfigured } from './config/env.js';
 import { runReminders } from './jobs/reminders.js';
 import { adminDb, isFirebaseAdminConfigured } from './lib/firebaseAdmin.js';
 import { requireAuth } from './middleware/auth.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { aiRouter } from './routes/ai.js';
 import { cloudinaryRouter } from './routes/cloudinary.js';
 import { cronRouter } from './routes/cron.js';
 import { foldersRouter } from './routes/folders.js';
@@ -32,6 +33,7 @@ app.get('/api/health', (_req, res) => {
     cloudinary: isCloudinaryConfigured,
     push: isPushConfigured,
     cron: Boolean(env.CRON_SECRET),
+    ai: isAiConfigured,
   });
 });
 // Agendador externo (protegido pelo CRON_SECRET, não pelo login)
@@ -44,6 +46,7 @@ app.use('/api/folders', foldersRouter);
 app.use('/api/subjects', subjectsRouter);
 app.use('/api/projects', projectsRouter);
 app.use('/api/push', pushRouter);
+app.use('/api/ai', aiRouter);
 
 app.use('/api', (_req, res) => {
   res.status(404).json({ error: 'Rota não encontrada.' });
@@ -55,6 +58,7 @@ app.listen(env.PORT, () => {
   console.log(`   Firebase Admin: ${isFirebaseAdminConfigured ? '✅ configurado' : '⚠️  pendente (preencha o .env)'}`);
   console.log(`   Cloudinary:     ${isCloudinaryConfigured ? '✅ configurado' : '⚠️  pendente (preencha o .env)'}`);
   console.log(`   Notificações:   ${isPushConfigured ? '✅ configurado' : '⚠️  pendente (VAPID no .env)'}`);
+  console.log(`   IA (Claude):    ${isAiConfigured ? `✅ configurado (${env.AI_MODEL})` : '⚠️  pendente (ANTHROPIC_API_KEY no .env)'}`);
 });
 
 // Enquanto o server estiver acordado, também roda os lembretes a cada 30 min

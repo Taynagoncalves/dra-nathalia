@@ -1,8 +1,9 @@
-import { AlertTriangle, CheckCircle2, NotebookPen, Pencil, Plus, RotateCcw, Target, Trash2, Undo2, X } from 'lucide-react';
+import { Sparkles, AlertTriangle, CheckCircle2, NotebookPen, Pencil, Plus, RotateCcw, Target, Trash2, Undo2, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ErrorFormModal } from '@/components/errors/ErrorFormModal';
+import { QuizConfigModal } from '@/components/quiz/QuizConfigModal';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ActionMenuButton } from '@/components/ui/ActionMenu';
 import { Badge } from '@/components/ui/Badge';
@@ -39,6 +40,7 @@ export default function ErrorNotebookPage() {
   const [status, setStatus] = useState<Status>('pendentes');
   const [form, setForm] = useState<{ entry?: ErrorEntry } | null>(null);
   const [deleting, setDeleting] = useState<ErrorEntry | null>(null);
+  const [quizOpen, setQuizOpen] = useState(false);
 
   const all = useMemo(() => errors.data ?? [], [errors.data]);
   const questionById = useMemo(() => new Map((questions.data ?? []).map((q) => [q.id, q])), [questions.data]);
@@ -86,9 +88,14 @@ export default function ErrorNotebookPage() {
         title="Caderno de Erros"
         description="Cada erro é uma pista do que revisar. Registre o motivo e volte nele até resolver."
         actions={
-          <Button onClick={() => setForm({})}>
-            <Plus className="size-4" /> Novo registro
-          </Button>
+          <>
+            <Button variant="secondary" onClick={() => setQuizOpen(true)} disabled={!all.some((e) => !e.resolved)}>
+              <Sparkles className="size-4" /> Quiz dos meus erros
+            </Button>
+            <Button onClick={() => setForm({})}>
+              <Plus className="size-4" /> Novo registro
+            </Button>
+          </>
         }
       />
 
@@ -340,6 +347,12 @@ export default function ErrorNotebookPage() {
         </div>
       )}
 
+      <QuizConfigModal
+        open={quizOpen}
+        onClose={() => setQuizOpen(false)}
+        defaultKind="errors"
+        defaultSubjectId={subjectId || attention[0]?.subjectId || all.find((e) => !e.resolved)?.subjectId}
+      />
       <ErrorFormModal open={!!form} onClose={() => setForm(null)} entry={form?.entry} />
       <ConfirmDialog
         open={!!deleting}

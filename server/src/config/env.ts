@@ -19,7 +19,10 @@ const schema = z.object({
   CLOUDINARY_API_SECRET: optional,
   MAX_UPLOAD_MB: z.coerce.number().positive().default(10),
 
+  // IA (Claude). A chave fica SÓ aqui no server.
   ANTHROPIC_API_KEY: optional,
+  AI_MODEL: z.string().default('claude-opus-5-5'),
+  /** gerações de IA por usuário por dia (controle de custo) */
   AI_DAILY_LIMIT: z.coerce.number().int().positive().default(30),
 
   // Notificações (Web Push) — gere com: npx web-push generate-vapid-keys
@@ -39,6 +42,8 @@ if (!parsed.success) {
 export const env = parsed.data;
 
 export const isPushConfigured = Boolean(env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY);
+
+export const isAiConfigured = Boolean(env.ANTHROPIC_API_KEY);
 
 export const isCloudinaryConfigured = Boolean(
   env.CLOUDINARY_CLOUD_NAME && env.CLOUDINARY_API_KEY && env.CLOUDINARY_API_SECRET,

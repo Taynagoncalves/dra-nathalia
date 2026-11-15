@@ -1,4 +1,6 @@
-import { FolderOpen, ListChecks, ListTree, Play } from 'lucide-react';
+import { FolderOpen, ListChecks, ListTree, Play, Sparkles } from 'lucide-react';
+import { useState } from 'react';
+import { QuizConfigModal } from '@/components/quiz/QuizConfigModal';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Breadcrumb } from '@/components/ui/Breadcrumb';
@@ -21,6 +23,7 @@ export default function SubjectPage() {
   const projects = useProjects();
   const timer = useStudyTimer();
   const [params, setParams] = useSearchParams();
+  const [quizOpen, setQuizOpen] = useState(false);
   const tab = (['materiais', 'assuntos', 'questoes'] as const).find((t) => t === params.get('aba')) ?? 'materiais';
 
   if (subject.isLoading) return <LoadingBlock />;
@@ -43,6 +46,10 @@ export default function SubjectPage() {
       <PageHeader
         title={s.name}
         actions={
+          <>
+          <Button variant="secondary" onClick={() => setQuizOpen(true)}>
+            <Sparkles className="size-4" /> Gerar quiz
+          </Button>
           <Button
             variant={studyingThis ? 'secondary' : 'primary'}
             disabled={!!timer.state && !studyingThis}
@@ -51,6 +58,7 @@ export default function SubjectPage() {
           >
             <Play className="size-4" /> {studyingThis ? 'Estudando agora' : 'Estudar esta matéria'}
           </Button>
+          </>
         }
         className="mb-4"
       />
@@ -71,6 +79,7 @@ export default function SubjectPage() {
       />
 
       {tab === 'assuntos' && <TopicsPanel subjectId={s.id} />}
+      <QuizConfigModal open={quizOpen} onClose={() => setQuizOpen(false)} defaultSubjectId={s.id} />
       {tab === 'materiais' && <MaterialsPanel subjectId={s.id} subjectName={s.name} />}
       {tab === 'questoes' && <QuestionBank fixedSubjectId={s.id} />}
     </>

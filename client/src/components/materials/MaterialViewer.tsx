@@ -15,7 +15,7 @@ import { KindIcon } from './MaterialCard';
  * - PDF → visualizador do navegador (iframe)
  * - Word/PowerPoint → Office Online Viewer + download
  */
-export function MaterialViewer({ material, onClose }: { material: Material | null; onClose: () => void }) {
+export function MaterialViewer({ material, onClose, page }: { material: Material | null; onClose: () => void; page?: number | null }) {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -81,7 +81,7 @@ export function MaterialViewer({ material, onClose }: { material: Material | nul
 
         {material.kind === 'pdf' && (
           <>
-            <iframe src={url} title={material.title} onLoad={() => setLoaded(true)} className="size-full bg-white" />
+            <iframe src={page ? `${url}#page=${page}` : url} title={material.title} onLoad={() => setLoaded(true)} className="size-full bg-white" />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 p-3 sm:hidden">
               <Alert variant="info" className="pointer-events-auto bg-surface">
                 No celular, o PDF pode abrir só a primeira página.{' '}
