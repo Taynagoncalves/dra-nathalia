@@ -195,11 +195,14 @@ export type EventType = 'estudo' | 'revisao' | 'prova' | 'outro';
 
 export interface CalendarEvent extends WithId {
   title: string;
-  /** 'AAAA-MM-DD' ou ISO com hora */
+  /** 'AAAA-MM-DD' */
   date: string;
+  /** 'HH:mm' (opcional; sem horário = o dia todo) */
+  time?: string | null;
   subjectId?: string | null;
   type: EventType;
   done: boolean;
+  notes?: string;
 }
 
 /* ── Etapa 2 (reservado) ─────────────────────────────────────────── */

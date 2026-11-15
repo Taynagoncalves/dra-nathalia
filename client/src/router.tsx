@@ -21,6 +21,7 @@ const NoteEditorPage = lazy(() => import('@/pages/subjects/NoteEditorPage'));
 const QuestionsPage = lazy(() => import('@/pages/questions/QuestionsPage'));
 const SolvePage = lazy(() => import('@/pages/questions/SolvePage'));
 const ErrorNotebookPage = lazy(() => import('@/pages/errors/ErrorNotebookPage'));
+const CalendarPage = lazy(() => import('@/pages/calendar/CalendarPage'));
 const UnderConstruction = lazy(() => import('@/pages/UnderConstruction'));
 const ThemePreview = lazy(() => import('@/pages/ThemePreview'));
 
@@ -65,7 +66,7 @@ const appRoutes: RouteObject[] = [
           { path: '/questoes', element: page(<QuestionsPage />) },
           { path: '/questoes/resolver', element: page(<SolvePage />) },
           { path: '/erros', element: page(<ErrorNotebookPage />) },
-          { path: '/calendario', element: page(<UnderConstruction title="Calendário" part={7} />) },
+          { path: '/calendario', element: page(<CalendarPage />) },
           { path: '/desempenho', element: page(<UnderConstruction title="Desempenho" part={8} />) },
           { path: '/perfil', element: page(<Profile />) },
           { path: '/em-breve/:slug', element: page(<ComingSoon />) },
