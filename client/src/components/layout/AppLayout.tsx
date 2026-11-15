@@ -1,68 +1,77 @@
-import { BookOpen, LogOut, Palette, User as UserIcon } from 'lucide-react';
-import { Link, NavLink, Outlet } from 'react-router-dom';
-import { toast } from 'sonner';
+import { BookOpen, Menu } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { Button } from '@/components/ui/Button';
-import { useAuth } from '@/contexts/AuthContext';
-import { cn } from '@/lib/cn';
-import { friendlyError } from '@/lib/firebaseErrors';
-import { signOut } from '@/services/firebase/auth';
+import { MobileDrawer } from './MobileDrawer';
+import { MobileTabBar } from './MobileTabBar';
+import { SidebarContent } from './SidebarContent';
+import { UserMenu } from './UserMenu';
 
 /**
- * Layout PROVISÓRIO da Parte 1 (topo com tema e sair).
- * Na Parte 2 ele ganha a sidebar completa e o menu do celular.
+ * Estrutura do app:
+ * - desktop (≥ md): sidebar fixa à esquerda + topo
+ * - celular: topo + menu inferior; o botão "Mais" (ou ☰) abre o drawer
  */
 export function AppLayout() {
-  const { profile, user } = useAuth();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const closeDrawer = useCallback(() => setDrawerOpen(false), []);
+  const { pathname } = useLocation();
 
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-    } catch (err) {
-      toast.error(friendlyError(err));
-    }
-  };
-
-  const linkClass = ({ isActive }: { isActive: boolean }) =>
-    cn(
-      'flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-      isActive ? 'bg-primary-soft text-primary-text' : 'text-text-muted hover:bg-primary-soft hover:text-text',
-    );
+  // Ao trocar de página: fecha o drawer e volta ao topo.
+  useEffect(() => {
+    setDrawerOpen(false);
+    window.scrollTo({ top: 0 });
+  }, [pathname]);
 
   return (
     <div className="min-h-dvh bg-bg">
-      <header className="sticky top-0 z-30 border-b border-border bg-surface/90 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-6xl items-center gap-2 px-4">
-          <Link to="/" className="mr-2 flex items-center gap-2 font-semibold text-text">
-            <span className="grid size-8 place-items-center rounded-lg bg-primary text-on-primary">
-              <BookOpen className="size-4" />
-            </span>
-            <span className="hidden sm:inline">Estudos</span>
-          </Link>
-          <nav className="flex items-center gap-1">
-            <NavLink to="/perfil" className={linkClass}>
-              <UserIcon className="size-4" />
-              <span className="hidden sm:inline">Perfil</span>
-            </NavLink>
-            <NavLink to="/tema-preview" className={linkClass}>
-              <Palette className="size-4" />
-              <span className="hidden sm:inline">Tema</span>
-            </NavLink>
-          </nav>
-          <div className="ml-auto flex items-center gap-1">
-            <span className="mr-2 hidden max-w-48 truncate text-sm text-text-muted md:inline">
-              {profile?.name || user?.displayName || user?.email}
-            </span>
-            <ThemeToggle />
-            <Button variant="ghost" size="icon" onClick={handleSignOut} aria-label="Sair" title="Sair">
-              <LogOut className="size-5" />
+      <a
+        href="#conteudo"
+        className="sr-only z-50 rounded-lg bg-primary px-4 py-2 text-on-primary focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+      >
+        Pular para o conteúdo
+      </a>
+
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-border bg-surface md:block">
+        <SidebarContent />
+      </aside>
+
+      <MobileDrawer open={drawerOpen} onClose={closeDrawer} />
+
+      <div className="md:pl-64">
+        <header className="sticky top-0 z-20 border-b border-border bg-bg/85 backdrop-blur">
+          <div className="flex h-16 items-center gap-2 px-4 md:px-8">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="-ml-2 md:hidden"
+              onClick={() => setDrawerOpen(true)}
+              aria-label="Abrir menu"
+            >
+              <Menu className="size-5" />
             </Button>
+            <Link to="/" className="flex items-center gap-2 font-semibold text-text md:hidden">
+              <span className="grid size-7 place-items-center rounded-lg bg-primary text-on-primary">
+                <BookOpen className="size-3.5" />
+              </span>
+              Estudos
+            </Link>
+
+            {/* Parte 3: o timer de estudo global entra aqui. */}
+            <div id="topbar-slot" className="flex-1" />
+
+            <ThemeToggle />
+            <UserMenu />
           </div>
-        </div>
-      </header>
-      <main className="mx-auto max-w-6xl px-4 py-8">
-        <Outlet />
-      </main>
+        </header>
+
+        <main id="conteudo" className="mx-auto max-w-6xl px-4 pt-6 pb-28 md:px-8 md:pt-8 md:pb-12">
+          <Outlet />
+        </main>
+      </div>
+
+      <MobileTabBar onOpenMenu={() => setDrawerOpen(true)} />
     </div>
   );
 }

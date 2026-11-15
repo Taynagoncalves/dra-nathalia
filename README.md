@@ -112,6 +112,35 @@ Detalhes:
 
 ---
 
+## 3. Deploy no Render
+
+São **dois serviços**: o site (estático) e a API (Node). O arquivo `render.yaml` já descreve os dois.
+
+**Opção A — Blueprint (recomendado):** Render → **New → Blueprint** → escolha o repositório.
+Preencha os valores pedidos no painel.
+
+**Opção B — manual:**
+
+| | Site (Static Site) | API (Web Service, Node) |
+|---|---|---|
+| Build command | `npm ci && npm run build -w client` | `npm ci && npm run build -w server` |
+| Publish dir / Start | `client/dist` | `npm start -w server` |
+| Variáveis | todas as `VITE_*` do `client/.env.example` + `VITE_API_URL` = URL da API | as do `server/.env.example`, com `CLIENT_ORIGIN` = URL do site |
+
+Depois de criar, **não esqueça**:
+
+1. **Rewrite do site** (só na opção B): *Static Site → Redirects/Rewrites* → Source `/*`,
+   Destination `/index.html`, Action **Rewrite**. Sem isso, recarregar em `/perfil` dá 404.
+2. **Service account:** na API, *Environment → Secret Files* → arquivo `serviceAccount.json` com o
+   JSON do Firebase, e `FIREBASE_SERVICE_ACCOUNT_PATH=/etc/secrets/serviceAccount.json`.
+3. **Firebase → Authentication → Configurações → Domínios autorizados:** adicione o domínio do site
+   (`seu-site.onrender.com`), senão o login com Google falha.
+4. As variáveis `VITE_*` entram **no build**: depois de mudá-las, faça um novo deploy do site.
+5. No plano gratuito, a API "dorme" após ~15 min sem uso; a primeira chamada depois disso pode
+   levar ~50 s (o upload de arquivos é o que vai sentir).
+
+---
+
 ## API (`/server`)
 
 Todas as rotas, exceto `/api/health`, exigem `Authorization: Bearer <Firebase ID Token>`.
@@ -146,7 +175,7 @@ Todas as rotas, exceto `/api/health`, exigem `Authorization: Bearer <Firebase ID
 ## Status do desenvolvimento (Etapa 1)
 
 - [x] Parte 1 — Setup, autenticação e sistema de temas
-- [ ] Parte 2 — Layout (sidebar) e perfil
+- [x] Parte 2 — Layout (sidebar) e perfil
 - [ ] Parte 3 — Projetos, matérias, assuntos e timer de estudo
 - [ ] Parte 4 — Materiais com pastas (4a pastas · 4b upload · 4c visualização · 4d organização)
 - [ ] Parte 5 — Banco de questões

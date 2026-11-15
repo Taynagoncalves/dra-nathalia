@@ -2,23 +2,38 @@ import { lazy, Suspense, type ReactNode } from 'react';
 import { createBrowserRouter, type RouteObject } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute, PublicOnlyRoute } from '@/components/layout/RouteGuards';
-import { FullPageSpinner } from '@/components/ui/Feedback';
+import { FullPageSpinner, Spinner } from '@/components/ui/Feedback';
 import ForgotPassword from '@/pages/auth/ForgotPassword';
 import Login from '@/pages/auth/Login';
 import Register from '@/pages/auth/Register';
-import Home from '@/pages/Home';
 import NotFound from '@/pages/NotFound';
-import Profile from '@/pages/Profile';
 import SetupRequired from '@/pages/SetupRequired';
 import { isFirebaseConfigured } from '@/services/firebase/app';
 
-// Recharts é pesado: só carrega quando a página for aberta.
+// Páginas carregadas sob demanda (deixa o carregamento inicial mais leve).
+const Home = lazy(() => import('@/pages/Home'));
+const Profile = lazy(() => import('@/pages/Profile'));
+const ComingSoon = lazy(() => import('@/pages/ComingSoon'));
+const UnderConstruction = lazy(() => import('@/pages/UnderConstruction'));
 const ThemePreview = lazy(() => import('@/pages/ThemePreview'));
 
-const withSuspense = (node: ReactNode) => <Suspense fallback={<FullPageSpinner />}>{node}</Suspense>;
+const page = (node: ReactNode) => (
+  <Suspense
+    fallback={
+      <div className="grid min-h-[50vh] place-items-center">
+        <Spinner className="size-7" />
+      </div>
+    }
+  >
+    {node}
+  </Suspense>
+);
 
 /** Página temporária de conferência do tema (funciona mesmo sem Firebase). */
-const themePreviewRoute: RouteObject = { path: '/tema-preview', element: withSuspense(<ThemePreview />) };
+const themePreviewRoute: RouteObject = {
+  path: '/tema-preview',
+  element: <Suspense fallback={<FullPageSpinner />}>{<ThemePreview />}</Suspense>,
+};
 
 const appRoutes: RouteObject[] = [
   {
@@ -35,8 +50,14 @@ const appRoutes: RouteObject[] = [
       {
         element: <AppLayout />,
         children: [
-          { index: true, element: <Home /> },
-          { path: '/perfil', element: <Profile /> },
+          { index: true, element: page(<Home />) },
+          { path: '/projetos/*', element: page(<UnderConstruction title="Projetos" part={3} />) },
+          { path: '/questoes/*', element: page(<UnderConstruction title="Questões" part={5} />) },
+          { path: '/erros', element: page(<UnderConstruction title="Caderno de Erros" part={6} />) },
+          { path: '/calendario', element: page(<UnderConstruction title="Calendário" part={7} />) },
+          { path: '/desempenho', element: page(<UnderConstruction title="Desempenho" part={8} />) },
+          { path: '/perfil', element: page(<Profile />) },
+          { path: '/em-breve/:slug', element: page(<ComingSoon />) },
         ],
       },
     ],
