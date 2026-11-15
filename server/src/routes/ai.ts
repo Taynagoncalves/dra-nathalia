@@ -4,6 +4,7 @@ import { aiModelName, aiProvider, isAiConfigured } from '../config/env.js';
 import { processMaterial } from '../ai/materials.js';
 import { planSchema, studyPlan } from '../ai/plan.js';
 import { answerSchema, deckSchema, evaluateSchema, evaluateTeaching, feedbackSchema, generateDeck, questionSchema, taynaAnswer, taynaFeedback, taynaQuestion } from '../ai/teacher.js';
+import { caseSchema, correctSimulation, generateCase } from '../ai/simulator.js';
 import { rateLimitOrThrow } from '../lib/rateLimit.js';
 import { chatSchema, clearNotebookChat, generateStudio, notebookChat, studioSchema } from '../ai/notebook.js';
 import { finishQuiz, finishSchema, gradeAnswer, quizRequestSchema, startQuiz } from '../ai/quiz.js';
@@ -130,4 +131,32 @@ aiRouter.post('/tayna/answer', async (req, res) => {
 aiRouter.post('/tayna/feedback', async (req, res) => {
   const body = feedbackSchema.parse(req.body);
   res.json(await withCredit(req.uid!, 'tayna', () => taynaFeedback(requireDb(), req.uid!, body)));
+});
+
+/* ── Simulador Jurídico ───────────────────────────────────────────── */
+
+/** POST /api/ai/cases — gera um caso fictício com documentos. */
+aiRouter.post('/cases', async (req, res) => {
+  const body = caseSchema.parse(req.body);
+  res.json(await withCredit(req.uid!, 'caso', () => generateCase(requireDb(), req.uid!, body)));
+});
+
+/** POST /api/ai/simulations/:id/correct — corrige a peça (8 critérios, erros, linha a linha e modelo). */
+aiRouter.post('/simulations/:id/correct', async (req, res) => {
+  const simId = id.parse(req.params.id);
+  res.json(await withCredit(req.uid!, 'correcao_peca', () => correctSimulation(requireDb(), req.uid!, simId)));
+});
+
+/** DELETE /api/ai/cases/:id — exclui o caso, o gabarito escondido e as simulações dele. */
+aiRouter.delete('/cases/:id', async (req, res) => {
+  const caseId = id.parse(req.params.id);
+  const db = requireDb();
+  const user = db.collection('users').doc(req.uid!);
+  const sims = await user.collection('simulations').where('caseId', '==', caseId).get();
+  const batch = db.batch();
+  sims.docs.forEach((d) => batch.delete(d.ref));
+  batch.delete(user.collection('cases').doc(caseId));
+  batch.delete(user.collection('caseKeys').doc(caseId));
+  await batch.commit();
+  res.json({ ok: true, deletedSimulations: sims.size });
 });

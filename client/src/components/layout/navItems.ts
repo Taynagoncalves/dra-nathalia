@@ -29,6 +29,7 @@ export const MAIN_NAV: NavItem[] = [
   { to: '/quizzes', label: 'Quizzes com IA', short: 'Quizzes', icon: Sparkles },
   { to: '/caderno', label: 'Caderno IA', short: 'Caderno', icon: BookOpenText },
   { to: '/professora', label: 'Modo Professora', short: 'Professora', icon: Presentation },
+  { to: '/simulador', label: 'Simulador Jurídico', short: 'Simulador', icon: Scale },
   { to: '/erros', label: 'Caderno de Erros', short: 'Erros', icon: NotebookPen },
   { to: '/calendario', label: 'Calendário', icon: CalendarDays },
   { to: '/desempenho', label: 'Desempenho', icon: ChartLine },
@@ -47,13 +48,4 @@ export interface SoonItem {
 }
 
 /** Funções das próximas etapas: aparecem com o selo "Em breve". */
-export const SOON_NAV: SoonItem[] = [
-  {
-    slug: 'simulador',
-    label: 'Simulador Jurídico',
-    icon: Scale,
-    stage: 'Etapa 4',
-    description:
-      'Casos concretos fictícios com documentos e a Roleta Jurídica: sorteie seu papel (autor, réu ou magistrado), escreva a peça e receba a correção.',
-  },
-];
+export const SOON_NAV: SoonItem[] = [];

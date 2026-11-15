@@ -8,6 +8,7 @@ export interface ErrorInput {
   topicId: string | null;
   category: ErrorCategory;
   note: string;
+  simulationId?: string | null;
 }
 
 /** Caderno de erros (todas as entradas; filtros no client). */
@@ -19,7 +20,7 @@ export async function listErrors(uid: string): Promise<ErrorEntry[]> {
 export async function createError(uid: string, data: ErrorInput) {
   const ref = await addDoc(userCol(uid, 'errors'), {
     ...data,
-    simulationId: null,
+    simulationId: data.simulationId ?? null,
     resolved: false,
     createdAt: serverTimestamp(),
   });

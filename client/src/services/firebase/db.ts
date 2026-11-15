@@ -21,6 +21,8 @@ export type UserCollection =
   | 'notebookChats'
   | 'notebookItems'
   | 'decks'
+  | 'cases'
+  | 'simulations'
   | 'pushSubscriptions';
 
 export const userCol = (uid: string, name: UserCollection) => collection(getDb(), 'users', uid, name);

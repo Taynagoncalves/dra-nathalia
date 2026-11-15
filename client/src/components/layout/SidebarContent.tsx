@@ -33,7 +33,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           ))}
         </ul>
 
-        <div>
+        {SOON_NAV.length > 0 && <div>
           <p className="mb-1.5 px-3 text-xs font-semibold tracking-wide text-text-muted uppercase">Próximas etapas</p>
           <ul className="space-y-0.5">
             {SOON_NAV.map(({ slug, label, icon: Icon }) => (
@@ -50,7 +50,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
               </li>
             ))}
           </ul>
-        </div>
+        </div>}
       </nav>
     </div>
   );

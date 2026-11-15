@@ -243,6 +243,8 @@ Todas as rotas, exceto `/api/health`, exigem `Authorization: Bearer <Firebase ID
 | POST | `/api/ai/decks` · `/api/ai/teach/evaluate` | slides com IA · avaliação do ensino oral |
 | POST | `/api/ai/tayna/question` · `answer` · `feedback` | perguntas, reações e feedback da Tayna |
 | POST | `/api/live` · `/api/live/:code/suggest` · `evaluate` · `end` | sessão ao vivo (Tayna de verdade) |
+| POST | `/api/ai/cases` · DELETE `/api/ai/cases/:id` | gera / exclui um caso do Simulador |
+| POST | `/api/ai/simulations/:id/correct` | corrige a peça (8 critérios, erros, linha a linha e modelo) |
 | POST | `/api/ai/plan` | plano do dia (“O que devo estudar agora?” com IA) |
 | POST | `/api/ai/notebook/studio` | Caderno IA: resumo, guia, FAQ, linha do tempo ou mapa mental |
 | DELETE | `/api/projects/:id` | exclui o projeto com todas as matérias e o conteúdo delas |
@@ -302,3 +304,13 @@ Todas as rotas, exceto `/api/health`, exigem `Authorization: Bearer <Firebase ID
 > A transcrição de voz funciona no Chrome e no Edge (computador e Android). Sem suporte, dá para digitar.
 
 **Etapa 3 concluída.**
+
+### Etapa 4 (Simulador Jurídico)
+
+- [x] Caso concreto fictício gerado pela IA (10 áreas, 3 dificuldades, opcionalmente ligado a uma matéria): fatos, partes e 3 a 6 documentos (contratos, conversas, comprovantes, e-mails, laudos, decisões)
+- [x] Roleta Jurídica animada: sorteia Autor, Réu ou Magistrado, sem escolha; refazer o caso sorteia entre os papéis que faltam
+- [x] O aluno descobre a peça: a peça esperada de cada papel fica em `caseKeys`, coleção que só o server lê (regras testadas)
+- [x] Editor com salvamento automático; correção por 8 critérios (nota geral 0–100 e notas por critério), “Meus erros nesta atividade” (erro, por quê, como corrigir) com envio ao caderno de erros, correção linha por linha lado a lado e modelo de resposta liberado só depois do envio
+- [x] Histórico, estatísticas por papel e níveis (Estagiário(a) → Tribunais Superiores), com o aviso de casos fictícios e correção educacional
+
+**Etapa 4 concluída.**

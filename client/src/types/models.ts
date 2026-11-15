@@ -398,3 +398,67 @@ export interface LiveSession {
   questions: LiveQuestion[];
   suggestions: Record<string, { question: string; answer: string }[]>;
 }
+
+/* ── Etapa 4 — Simulador Jurídico ─────────────────────────────────── */
+
+export type CaseArea = 'civil' | 'consumidor' | 'familia' | 'penal' | 'trabalho' | 'administrativo' | 'tributario' | 'constitucional' | 'empresarial' | 'previdenciario';
+export type CaseDifficulty = 'facil' | 'medio' | 'dificil';
+export type SimRole = 'autor' | 'reu' | 'magistrado';
+export type CaseDocKind = 'contrato' | 'conversa' | 'comprovante' | 'decisao' | 'notificacao' | 'email' | 'boletim' | 'laudo' | 'peticao' | 'outro';
+
+export interface CaseDocument {
+  kind: CaseDocKind;
+  title: string;
+  date: string | null;
+  content: string;
+}
+
+export interface LegalCase extends WithId {
+  title: string;
+  summary: string;
+  facts: string;
+  parties: { autor: string; reu: string };
+  documents: CaseDocument[];
+  roles: Record<SimRole, string>;
+  area: CaseArea;
+  difficulty: CaseDifficulty;
+  subjectId: string | null;
+  createdAt: Timestamp | null;
+}
+
+export interface SimCriterion {
+  key: string;
+  label: string;
+  score: number;
+  comment: string;
+}
+
+export interface SimCorrection {
+  overall: number;
+  expectedPiece: string;
+  identifiedPiece: string;
+  pieceCorrect: boolean;
+  criteria: SimCriterion[];
+  summary: string;
+  strengths: string[];
+  errors: { error: string; why: string; fix: string; category: ErrorCategory }[];
+  lines: { index: number; status: 'ajustar' | 'erro'; suggestion: string; comment: string }[];
+  modelAnswer: string;
+  essentials: string[];
+}
+
+export interface Simulation extends WithId {
+  caseId: string;
+  caseTitle: string;
+  area: CaseArea;
+  role: SimRole;
+  pieceTitle: string;
+  text: string;
+  status: 'rascunho' | 'corrigindo' | 'corrigida';
+  score?: number;
+  correction?: SimCorrection;
+  errorsSaved?: boolean;
+  createdAt: Timestamp | null;
+  updatedAt?: Timestamp | null;
+  submittedAt?: Timestamp | null;
+}

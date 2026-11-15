@@ -29,6 +29,9 @@ const NotebookHome = lazy(() => import('@/pages/notebook/NotebookHome'));
 const TeacherHome = lazy(() => import('@/pages/teacher/TeacherHome'));
 const DeckEditor = lazy(() => import('@/pages/teacher/DeckEditor'));
 const PresentPage = lazy(() => import('@/pages/teacher/PresentPage'));
+const SimulatorHome = lazy(() => import('@/pages/simulator/SimulatorHome'));
+const CasePage = lazy(() => import('@/pages/simulator/CasePage'));
+const SimulationPage = lazy(() => import('@/pages/simulator/SimulationPage'));
 const LiveGuest = lazy(() => import('@/pages/live/LiveGuest'));
 const ThemePreview = lazy(() => import('@/pages/ThemePreview'));
 
@@ -80,6 +83,9 @@ const appRoutes: RouteObject[] = [
           { path: '/professora', element: page(<TeacherHome />) },
           { path: '/professora/:deckId', element: page(<DeckEditor />) },
           { path: '/professora/:deckId/apresentar', element: page(<PresentPage />) },
+          { path: '/simulador', element: page(<SimulatorHome />) },
+          { path: '/simulador/casos/:caseId', element: page(<CasePage />) },
+          { path: '/simulador/pecas/:simId', element: page(<SimulationPage />) },
           { path: '/desempenho', element: page(<PerformancePage />) },
           { path: '/perfil', element: page(<Profile />) },
           { path: '/em-breve/:slug', element: page(<ComingSoon />) },
