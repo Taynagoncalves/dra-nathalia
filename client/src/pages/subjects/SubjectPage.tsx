@@ -3,14 +3,13 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Breadcrumb } from '@/components/ui/Breadcrumb';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { EmptyState } from '@/components/ui/Feedback';
 import { IconTile } from '@/components/ui/IconTile';
 import { ErrorBlock, LoadingBlock } from '@/components/ui/States';
 import { Tabs } from '@/components/ui/Tabs';
 import { useStudyTimer } from '@/contexts/StudyTimerContext';
 import { useProjects, useSubject } from '@/hooks/useStudyData';
 import NotFound from '../NotFound';
+import { QuestionBank } from '@/components/questions/QuestionBank';
 import { MaterialsPanel } from './MaterialsPanel';
 import { TopicsPanel } from './TopicsPanel';
 
@@ -73,11 +72,7 @@ export default function SubjectPage() {
 
       {tab === 'assuntos' && <TopicsPanel subjectId={s.id} />}
       {tab === 'materiais' && <MaterialsPanel subjectId={s.id} subjectName={s.name} />}
-      {tab === 'questoes' && (
-        <Card>
-          <EmptyState icon={ListChecks} title="Questões chegam na Parte 5" description="Banco de questões desta matéria." />
-        </Card>
-      )}
+      {tab === 'questoes' && <QuestionBank fixedSubjectId={s.id} />}
     </>
   );
 }
