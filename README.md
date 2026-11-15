@@ -156,6 +156,7 @@ Todas as rotas, exceto `/api/health`, exigem `Authorization: Bearer <Firebase ID
 | POST | `/api/cloudinary/delete-batch` | `{ items: [{ publicId, resourceType }] }` |
 | DELETE | `/api/folders/:id?mode=moveUp|cascade` | exclui pasta (conteúdo sobe um nível, ou apaga tudo + arquivos) |
 | DELETE | `/api/subjects/:id` | exclui a matéria com tudo dela (inclusive os arquivos) |
+| DELETE | `/api/projects/:id` | exclui o projeto com todas as matérias e o conteúdo delas |
 
 ---
 

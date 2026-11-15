@@ -1,8 +1,9 @@
 import { BookOpen, ChevronRight, EllipsisVertical, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { DeleteProjectDialog } from '@/components/projects/DeleteProjectDialog';
 import { ProjectFormModal } from '@/components/projects/ProjectFormModal';
 import { SubjectFormModal } from '@/components/projects/SubjectFormModal';
 import { Badge } from '@/components/ui/Badge';
@@ -32,6 +33,8 @@ export default function ProjectDetail() {
   const [subjectFormOpen, setSubjectFormOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState<Subject>();
   const [deletingSubject, setDeletingSubject] = useState<Subject>();
+  const [deletingProject, setDeletingProject] = useState(false);
+  const navigate = useNavigate();
 
   if (projects.isLoading) return <LoadingBlock />;
   if (projects.isError) return <ErrorBlock error={projects.error} onRetry={() => projects.refetch()} />;
@@ -54,6 +57,9 @@ export default function ProjectDetail() {
         title={project.name}
         actions={
           <>
+            <Button variant="danger" onClick={() => setDeletingProject(true)}>
+              <Trash2 className="size-4" /> <span className="hidden sm:inline">Excluir projeto</span>
+            </Button>
             <Button variant="secondary" onClick={() => setProjectFormOpen(true)}>
               <Pencil className="size-4" /> Editar projeto
             </Button>
@@ -158,6 +164,11 @@ export default function ProjectDetail() {
         </>
       )}
 
+      <DeleteProjectDialog
+        project={deletingProject ? project : null}
+        onClose={() => setDeletingProject(false)}
+        onDeleted={() => navigate('/projetos', { replace: true })}
+      />
       <ProjectFormModal open={projectFormOpen} onClose={() => setProjectFormOpen(false)} project={project} />
       <SubjectFormModal
         open={subjectFormOpen}

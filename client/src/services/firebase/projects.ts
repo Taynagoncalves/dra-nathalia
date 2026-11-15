@@ -1,15 +1,6 @@
-import {
-  addDoc,
-  deleteDoc,
-  getCountFromServer,
-  getDocs,
-  orderBy,
-  query,
-  serverTimestamp,
-  updateDoc,
-  where,
-} from 'firebase/firestore';
+import { addDoc, getDocs, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
 import type { Project, ProjectType } from '@/types/models';
+import { apiFetch } from '../api';
 import { docsWithId, userCol, userDoc } from './db';
 
 export interface ProjectInput {
@@ -40,13 +31,9 @@ export async function updateProject(uid: string, id: string, data: Partial<Proje
 }
 
 /**
- * Só exclui projeto vazio: as matérias guardam materiais, questões e erros,
- * então a exclusão delas precisa ser uma decisão explícita, matéria por matéria.
+ * Exclui o projeto com tudo dentro (matérias, assuntos, pastas, materiais e
+ * arquivos, anotações, questões, erros). Feito no server, que limpa o Cloudinary.
  */
-export async function deleteProject(uid: string, id: string) {
-  const count = await getCountFromServer(query(userCol(uid, 'subjects'), where('projectId', '==', id)));
-  if (count.data().count > 0) {
-    throw new Error('Exclua as matérias deste projeto antes de excluí-lo (ou arquive o projeto).');
-  }
-  await deleteDoc(userDoc(uid, 'projects', id));
+export async function deleteProject(id: string) {
+  return apiFetch<{ deletedSubjects: number; filesOk: boolean }>(`/projects/${id}`, { method: 'DELETE' });
 }

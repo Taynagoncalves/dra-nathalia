@@ -8,6 +8,7 @@ import { requireAuth } from './middleware/auth.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { cloudinaryRouter } from './routes/cloudinary.js';
 import { foldersRouter } from './routes/folders.js';
+import { projectsRouter } from './routes/projects.js';
 import { subjectsRouter } from './routes/subjects.js';
 
 const app = express();
@@ -30,6 +31,7 @@ app.use('/api', requireAuth);
 app.use('/api/cloudinary', cloudinaryRouter);
 app.use('/api/folders', foldersRouter);
 app.use('/api/subjects', subjectsRouter);
+app.use('/api/projects', projectsRouter);
 
 app.use('/api', (_req, res) => {
   res.status(404).json({ error: 'Rota não encontrada.' });

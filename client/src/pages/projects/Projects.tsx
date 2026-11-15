@@ -3,11 +3,11 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { DeleteProjectDialog } from '@/components/projects/DeleteProjectDialog';
 import { ProjectFormModal } from '@/components/projects/ProjectFormModal';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Dropdown, DropdownItem } from '@/components/ui/Dropdown';
 import { EmptyState } from '@/components/ui/Feedback';
 import { IconTile } from '@/components/ui/IconTile';
@@ -22,7 +22,7 @@ export default function Projects() {
   const navigate = useNavigate();
   const projects = useProjects();
   const { byProject } = useProgress();
-  const { update, remove } = useProjectMutations();
+  const { update } = useProjectMutations();
 
   const [showArchived, setShowArchived] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
@@ -128,25 +128,7 @@ export default function Projects() {
         onCreated={(id) => navigate(`/projetos/${id}`)}
       />
 
-      <ConfirmDialog
-        open={!!deleting}
-        onClose={() => setDeleting(undefined)}
-        title={`Excluir “${deleting?.name}”?`}
-        description="Só é possível excluir projetos sem matérias. Se quiser apenas tirá-lo da lista, use Arquivar."
-        confirmLabel="Excluir"
-        danger
-        loading={remove.isPending}
-        onConfirm={async () => {
-          if (!deleting) return;
-          try {
-            await remove.mutateAsync(deleting.id);
-            toast.success('Projeto excluído.');
-            setDeleting(undefined);
-          } catch {
-            /* toast já exibido */
-          }
-        }}
-      />
+      <DeleteProjectDialog project={deleting ?? null} onClose={() => setDeleting(undefined)} />
     </>
   );
 }

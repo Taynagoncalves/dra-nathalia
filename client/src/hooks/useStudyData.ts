@@ -68,8 +68,9 @@ export function useProjectMutations() {
       onError,
     }),
     remove: useMutation({
-      mutationFn: (id: string) => deleteProject(uid, id),
-      onSuccess: invalidate,
+      mutationFn: (id: string) => deleteProject(id),
+      // some muita coisa (matérias, materiais, questões…): recarrega todos os dados
+      onSuccess: () => qc.invalidateQueries(),
       onError,
     }),
   };
