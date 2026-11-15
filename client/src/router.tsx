@@ -25,6 +25,7 @@ const ErrorNotebookPage = lazy(() => import('@/pages/errors/ErrorNotebookPage'))
 const CalendarPage = lazy(() => import('@/pages/calendar/CalendarPage'));
 const QuizzesPage = lazy(() => import('@/pages/quizzes/QuizzesPage'));
 const QuizPage = lazy(() => import('@/pages/quizzes/QuizPage'));
+const NotebookHome = lazy(() => import('@/pages/notebook/NotebookHome'));
 const ThemePreview = lazy(() => import('@/pages/ThemePreview'));
 
 const page = (node: ReactNode) => (
@@ -71,6 +72,7 @@ const appRoutes: RouteObject[] = [
           { path: '/calendario', element: page(<CalendarPage />) },
           { path: '/quizzes', element: page(<QuizzesPage />) },
           { path: '/quizzes/:quizId', element: page(<QuizPage />) },
+          { path: '/caderno', element: page(<NotebookHome />) },
           { path: '/desempenho', element: page(<PerformancePage />) },
           { path: '/perfil', element: page(<Profile />) },
           { path: '/em-breve/:slug', element: page(<ComingSoon />) },

@@ -1,5 +1,5 @@
 import {
-  Bot,
+  BookOpenText,
   CalendarDays,
   ChartLine,
   FolderKanban,
@@ -27,6 +27,7 @@ export const MAIN_NAV: NavItem[] = [
   { to: '/projetos', label: 'Projetos', icon: FolderKanban },
   { to: '/questoes', label: 'Questões', icon: ListChecks },
   { to: '/quizzes', label: 'Quizzes com IA', short: 'Quizzes', icon: Sparkles },
+  { to: '/caderno', label: 'Caderno IA', short: 'Caderno', icon: BookOpenText },
   { to: '/erros', label: 'Caderno de Erros', short: 'Erros', icon: NotebookPen },
   { to: '/calendario', label: 'Calendário', icon: CalendarDays },
   { to: '/desempenho', label: 'Desempenho', icon: ChartLine },
@@ -46,14 +47,6 @@ export interface SoonItem {
 
 /** Funções das próximas etapas: aparecem com o selo "Em breve". */
 export const SOON_NAV: SoonItem[] = [
-  {
-    slug: 'assistente',
-    label: 'Assistente IA',
-    icon: Bot,
-    stage: 'Etapa 2',
-    description:
-      'Um chat dentro de cada matéria que responde com base nos seus materiais e indica a fonte (“Apostila X, p. 12”).',
-  },
   {
     slug: 'professora',
     label: 'Modo Professora',

@@ -206,6 +206,11 @@ mais tarde.
 - **Respostas em JSON validado:** saídas estruturadas + zod; se vier inválido, tenta de novo uma vez.
 - **Integridade jurídica:** o prompt proíbe inventar artigos, súmulas e julgados e pede para dizer quando
   não há certeza (`server/src/ai/prompts.ts`).
+- **Caderno IA (estilo NotebookLM):** dentro de cada matéria (aba *Caderno IA*) ou pelo menu. Você marca as
+  fontes (PDFs, Word, PowerPoint, anotações) e: **conversa** com elas — cada afirmação vem com [n], o trecho
+  citado e o link para a página — ou gera no **Estúdio** resumo, guia de estudo, perguntas frequentes, linha do
+  tempo e mapa mental (ficam salvos). Se a pergunta não estiver nos materiais, a resposta avisa. O NotebookLM
+  do Google não tem API pública, por isso a experiência foi recriada aqui com o Gemini.
 - **Formato garantido:** no Gemini, `responseJsonSchema`; no Claude, saídas estruturadas + *fallback* do
   servidor em caso de recusa. Nos dois, a resposta é validada com zod.
 - **Limites:** cada quiz lê no máximo ~180 mil caracteres do material. O limite diário (`AI_DAILY_LIMIT`) e o
@@ -233,6 +238,9 @@ Todas as rotas, exceto `/api/health`, exigem `Authorization: Bearer <Firebase ID
 | POST | `/api/ai/quizzes` | começa a gerar um quiz (status acompanhado pelo Firestore) |
 | POST | `/api/ai/quizzes/:id/finish` | resultado + feedback da IA + categoria sugerida dos erros |
 | POST | `/api/ai/grade` | corrige uma resposta discursiva |
+| POST | `/api/ai/notebook/chat` | Caderno IA: pergunta sobre as fontes (resposta com citações) |
+| DELETE | `/api/ai/notebook/chat/:subjectId` | limpa a conversa da matéria |
+| POST | `/api/ai/notebook/studio` | Caderno IA: resumo, guia, FAQ, linha do tempo ou mapa mental |
 | DELETE | `/api/projects/:id` | exclui o projeto com todas as matérias e o conteúdo delas |
 
 ---
@@ -275,5 +283,5 @@ Todas as rotas, exceto `/api/health`, exigem `Authorization: Bearer <Firebase ID
 
 - [x] Base da IA: módulo `server/ai`, extração de texto em trechos, JSON validado, limite diário
 - [x] Gerador de Quiz com IA (todas as origens, modos, correção de discursivas, feedback, contestar, salvar no banco)
-- [ ] Assistente de estudos (chat na matéria, com fontes)
+- [x] Caderno IA (estilo NotebookLM): chat com as fontes e citações + estúdio (resumo, guia, FAQ, linha do tempo, mapa mental)
 - [ ] Resumos automáticos, revisões inteligentes e “O que estudar agora?” com IA

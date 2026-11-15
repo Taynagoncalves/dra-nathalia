@@ -1,4 +1,4 @@
-import { FolderOpen, ListChecks, ListTree, Play, Sparkles } from 'lucide-react';
+import { BookOpenText, FolderOpen, ListChecks, ListTree, Play, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { QuizConfigModal } from '@/components/quiz/QuizConfigModal';
 import { useParams, useSearchParams } from 'react-router-dom';
@@ -13,9 +13,10 @@ import { useProjects, useSubject } from '@/hooks/useStudyData';
 import NotFound from '../NotFound';
 import { QuestionBank } from '@/components/questions/QuestionBank';
 import { MaterialsPanel } from './MaterialsPanel';
+import { NotebookPanel } from './NotebookPanel';
 import { TopicsPanel } from './TopicsPanel';
 
-type Tab = 'materiais' | 'assuntos' | 'questoes';
+type Tab = 'materiais' | 'caderno' | 'assuntos' | 'questoes';
 
 export default function SubjectPage() {
   const { subjectId = '' } = useParams();
@@ -24,7 +25,7 @@ export default function SubjectPage() {
   const timer = useStudyTimer();
   const [params, setParams] = useSearchParams();
   const [quizOpen, setQuizOpen] = useState(false);
-  const tab = (['materiais', 'assuntos', 'questoes'] as const).find((t) => t === params.get('aba')) ?? 'materiais';
+  const tab = (['materiais', 'caderno', 'assuntos', 'questoes'] as const).find((t) => t === params.get('aba')) ?? 'materiais';
 
   if (subject.isLoading) return <LoadingBlock />;
   if (subject.isError) return <ErrorBlock error={subject.error} onRetry={() => subject.refetch()} />;
@@ -73,12 +74,14 @@ export default function SubjectPage() {
         onChange={(t) => setParams(t === 'materiais' ? {} : { aba: t }, { replace: true })}
         items={[
           { value: 'materiais', label: 'Materiais', icon: FolderOpen },
+          { value: 'caderno', label: 'Caderno IA', icon: BookOpenText },
           { value: 'assuntos', label: 'Assuntos', icon: ListTree },
           { value: 'questoes', label: 'Questões', icon: ListChecks },
         ]}
       />
 
       {tab === 'assuntos' && <TopicsPanel subjectId={s.id} />}
+      {tab === 'caderno' && <NotebookPanel subjectId={s.id} onGoToMaterials={() => setParams({}, { replace: true })} />}
       <QuizConfigModal open={quizOpen} onClose={() => setQuizOpen(false)} defaultSubjectId={s.id} />
       {tab === 'materiais' && <MaterialsPanel subjectId={s.id} subjectName={s.name} />}
       {tab === 'questoes' && <QuestionBank fixedSubjectId={s.id} />}

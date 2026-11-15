@@ -1,4 +1,4 @@
-import type { ErrorCategory, QuizConfig, QuizSource } from '@/types/models';
+import type { ErrorCategory, NotebookItem, NotebookMessage, QuizConfig, QuizSource, StudioKind } from '@/types/models';
 import { apiFetch } from './api';
 
 /** Chamadas de IA. Tudo passa pelo /server (a chave da IA nunca fica no navegador). */
@@ -56,3 +56,14 @@ export interface GradeResponse {
 
 export const gradeDiscursive = (quizId: string, index: number, answer: string) =>
   apiFetch<GradeResponse>('/ai/grade', { method: 'POST', json: { quizId, index, answer } });
+
+/* ── Caderno IA ───────────────────────────────────────────────────── */
+
+/** Pergunta sobre os materiais (vazio = todas as fontes prontas da matéria). */
+export const askNotebook = (subjectId: string, materialIds: string[], message: string) =>
+  apiFetch<NotebookMessage>('/ai/notebook/chat', { method: 'POST', json: { subjectId, materialIds, message } });
+
+export const clearNotebookChat = (subjectId: string) => apiFetch(`/ai/notebook/chat/${subjectId}`, { method: 'DELETE' });
+
+export const generateStudioItem = (subjectId: string, materialIds: string[], kind: StudioKind) =>
+  apiFetch<NotebookItem>('/ai/notebook/studio', { method: 'POST', json: { subjectId, materialIds, kind } });

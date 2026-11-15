@@ -294,3 +294,52 @@ export interface QuizResult extends WithId {
   contested: number[];
   createdAt: Timestamp | null;
 }
+
+/* ── Etapa 2: Caderno IA (estilo NotebookLM) ─────────────────────── */
+
+export interface NotebookCitation {
+  materialId: string | null;
+  title: string;
+  page: number | null;
+  quote: string;
+}
+
+export interface NotebookMessage {
+  role: 'user' | 'assistant';
+  text: string;
+  /** citações numeradas: o texto usa [n] */
+  citations?: (NotebookCitation & { n: number })[];
+  followUps?: string[];
+  /** a resposta usou conhecimento geral (fora dos materiais) */
+  generalKnowledge?: boolean;
+}
+
+export type StudioKind = 'resumo' | 'guia' | 'faq' | 'linha_do_tempo' | 'mapa_mental';
+
+type Cit = NotebookCitation | null;
+export interface StudioContent {
+  resumo: { title: string; overview: string; keyPoints: { point: string; detail: string; citation: Cit }[] };
+  guia: {
+    title: string;
+    objectives: string[];
+    sections: { topic: string; explanation: string; keyTerms: { term: string; definition: string }[]; citation: Cit }[];
+    selfCheck: { question: string; answer: string }[];
+  };
+  faq: { title: string; items: { question: string; answer: string; citation: Cit }[] };
+  linha_do_tempo: { title: string; events: { when: string; what: string; why: string; citation: Cit }[] };
+  mapa_mental: {
+    title: string;
+    root: string;
+    branches: { label: string; summary: string; citation: Cit; children: { label: string; summary: string; citation: Cit }[] }[];
+  };
+}
+
+export interface NotebookItem<K extends StudioKind = StudioKind> extends WithId {
+  subjectId: string;
+  kind: K;
+  title: string;
+  content: StudioContent[K];
+  sourceMaterialIds: string[];
+  truncated?: boolean;
+  createdAt: Timestamp | null;
+}
