@@ -1,6 +1,6 @@
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Bell, BellRing, CalendarDays, CheckCheck, Flame, Info } from 'lucide-react';
+import { Bell, BellRing, CalendarDays, CheckCheck, Flame, Info, Trophy } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { Dropdown } from '@/components/ui/Dropdown';
@@ -9,7 +9,7 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { cn } from '@/lib/cn';
 import { markAllNotificationsRead, markNotificationRead, type NotificationKind } from '@/services/firebase/notifications';
 
-const KIND_ICON: Record<NotificationKind, typeof Bell> = { evento: CalendarDays, sequencia: Flame, sistema: Info };
+const KIND_ICON: Record<NotificationKind, typeof Bell> = { evento: CalendarDays, sequencia: Flame, sistema: Info, conquista: Trophy };
 
 /** Sino do topo: notificações do site (lembretes de eventos, sequência…). */
 export function NotificationBell() {

@@ -1,11 +1,12 @@
 import { addMonths, addWeeks, format, isSameMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarDays, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, Plus, Wand2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { EventFormModal } from '@/components/calendar/EventFormModal';
 import { EventItem } from '@/components/calendar/EventItem';
+import { StudyPlanModal } from '@/components/calendar/StudyPlanModal';
 import { EVENT_META, EVENT_TYPES } from '@/components/calendar/eventMeta';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
@@ -43,6 +44,7 @@ export default function CalendarPage() {
 
   const [selectedKey, setSelectedKey] = useState(anchorKey);
   const [form, setForm] = useState<{ event?: CalendarEvent; date: string } | null>(null);
+  const [planOpen, setPlanOpen] = useState(false);
   const [deleting, setDeleting] = useState<CalendarEvent | null>(null);
 
   const days = useMemo(() => (view === 'mes' ? monthGrid(anchor) : weekDays(anchor)), [view, anchorKey]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -91,9 +93,14 @@ export default function CalendarPage() {
         title="Calendário"
         description="Planeje estudos, revisões e provas. Marque o que já fez."
         actions={
+          <>
+            <Button variant="secondary" onClick={() => setPlanOpen(true)}>
+              <Wand2 className="size-4" /> Cronograma até a prova
+            </Button>
           <Button onClick={() => setForm({ date: selectedKey })}>
             <Plus className="size-4" /> Novo evento
           </Button>
+          </>
         }
       />
 
@@ -279,6 +286,7 @@ export default function CalendarPage() {
         </div>
       )}
 
+      <StudyPlanModal open={planOpen} onClose={() => setPlanOpen(false)} />
       <EventFormModal open={!!form} onClose={() => setForm(null)} event={form?.event} defaultDate={form?.date ?? selectedKey} />
       <ConfirmDialog
         open={!!deleting}

@@ -16,7 +16,7 @@ import {
 import { getDb } from './app';
 import { userCol } from './db';
 
-export type NotificationKind = 'evento' | 'sequencia' | 'sistema';
+export type NotificationKind = 'evento' | 'sequencia' | 'sistema' | 'conquista';
 
 export interface AppNotification {
   id: string;

@@ -5,6 +5,9 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { AiPlanModal } from '@/components/dashboard/AiPlanModal';
+import { ForYou } from '@/components/dashboard/ForYou';
+import { LevelCard } from '@/components/gamification/LevelCard';
+import { useGamification, useGamificationSync } from '@/hooks/useGamification';
 import { useAiStatus } from '@/hooks/useQuizzes';
 import { useAllTopics } from '@/hooks/useStudyData';
 import { friendlyError } from '@/lib/firebaseErrors';
@@ -67,6 +70,8 @@ export default function DashboardPage() {
   const [reviewing, setReviewing] = useState<string | null>(null);
   const ai = useAiStatus();
   const topics = useAllTopics();
+  const gamification = useGamification();
+  useGamificationSync(gamification.data);
 
   const { today } = data;
   const weekStart = toKey(startOfWeek(fromKey(today), { weekStartsOn: WEEK_STARTS_ON }));
@@ -219,6 +224,14 @@ export default function DashboardPage() {
         <StatTile icon={ListChecks} label="Questões resolvidas" value={stats.overall.total} hint={`${stats.weekQ} nesta semana`} />
         <StatTile icon={CheckCircle2} label="Acerto geral" value={stats.overall.total ? `${stats.overall.pct}%` : '—'} hint={<Link to="/desempenho" className="text-primary-text hover:underline">Ver desempenho</Link>} />
       </div>
+
+      {/* Gamificação e recomendações personalizadas */}
+      {gamification.data && (
+        <div className="mb-6 grid gap-5 lg:grid-cols-2">
+          <LevelCard g={gamification.data} />
+          <ForYou g={gamification.data} />
+        </div>
+      )}
 
       {/* Revisões inteligentes */}
       {data.reviews.some((r) => r.status !== 'em_breve') && (

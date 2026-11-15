@@ -245,6 +245,7 @@ Todas as rotas, exceto `/api/health`, exigem `Authorization: Bearer <Firebase ID
 | POST | `/api/live` · `/api/live/:code/suggest` · `evaluate` · `end` | sessão ao vivo (Tayna de verdade) |
 | POST | `/api/ai/cases` · DELETE `/api/ai/cases/:id` | gera / exclui um caso do Simulador |
 | POST | `/api/ai/simulations/:id/correct` | corrige a peça (8 critérios, erros, linha a linha e modelo) |
+| POST | `/api/ai/practice` · `/api/ai/practice/:id/evaluate` | “Um dia na prática jurídica”: agenda e avaliação |
 | POST | `/api/ai/plan` | plano do dia (“O que devo estudar agora?” com IA) |
 | POST | `/api/ai/notebook/studio` | Caderno IA: resumo, guia, FAQ, linha do tempo ou mapa mental |
 | DELETE | `/api/projects/:id` | exclui o projeto com todas as matérias e o conteúdo delas |
@@ -314,3 +315,13 @@ Todas as rotas, exceto `/api/health`, exigem `Authorization: Bearer <Firebase ID
 - [x] Histórico, estatísticas por papel e níveis (Estagiário(a) → Tribunais Superiores), com o aviso de casos fictícios e correção educacional
 
 **Etapa 4 concluída.**
+
+### Etapa 5 (Extras)
+
+- [x] Gamificação (`/conquistas`): XP calculado a partir da atividade (questões, minutos, quizzes, peças, apresentações, dias na prática, erros resolvidos), níveis com títulos (Calouro(a) → Doutrinador(a)), 17 conquistas com progresso e aviso no sino, 3 missões diárias e 1 desafio semanal (mesmos para o dia/semana inteiros), com XP extra
+- [x] Calendário inteligente: “Cronograma até a prova” distribui as matérias até a data da prova, com mais sessões para as mais fracas (acerto + erros pendentes), revisões espaçadas e revisão geral nos 2 últimos dias. Os eventos do cronograma só notificam no próprio dia
+- [x] Recomendações personalizadas (“Para você”, no Dashboard): prova próxima, sequência em risco, peça em rascunho, erros pendentes, matéria mais fraca, papel do Simulador que falta, quiz atrasado, missões
+- [x] Um dia na prática jurídica (`/pratica`): a IA monta a agenda de um expediente (advocacia, magistratura, promotoria, defensoria ou delegacia) com 5 tarefas; no fim, nota por tarefa, feedback e resposta ideal
+- [x] Exportação: anotação ou matéria inteira em Markdown, Word (.doc) ou PDF; relatório de desempenho (7, 30, 90 dias ou 1 ano) em PDF/Word; planilhas CSV (questões, sessões, erros, Simulador, prática) em `/relatorios`
+
+**Etapa 5 concluída: todas as etapas do projeto estão prontas.**

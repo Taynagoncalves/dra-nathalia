@@ -1,5 +1,8 @@
 import {
   BookOpenText,
+  Briefcase,
+  FileDown,
+  Trophy,
   CalendarDays,
   ChartLine,
   FolderKanban,
@@ -30,9 +33,12 @@ export const MAIN_NAV: NavItem[] = [
   { to: '/caderno', label: 'Caderno IA', short: 'Caderno', icon: BookOpenText },
   { to: '/professora', label: 'Modo Professora', short: 'Professora', icon: Presentation },
   { to: '/simulador', label: 'Simulador Jurídico', short: 'Simulador', icon: Scale },
+  { to: '/pratica', label: 'Um dia na prática', short: 'Prática', icon: Briefcase },
   { to: '/erros', label: 'Caderno de Erros', short: 'Erros', icon: NotebookPen },
   { to: '/calendario', label: 'Calendário', icon: CalendarDays },
   { to: '/desempenho', label: 'Desempenho', icon: ChartLine },
+  { to: '/conquistas', label: 'Conquistas', icon: Trophy },
+  { to: '/relatorios', label: 'Relatórios', icon: FileDown },
   { to: '/perfil', label: 'Perfil', icon: UserRound },
 ];
 

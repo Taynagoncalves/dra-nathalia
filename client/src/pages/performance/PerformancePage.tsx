@@ -1,4 +1,4 @@
-import { CheckCircle2, Clock, Flame, ListChecks, RotateCcw, TrendingUp } from 'lucide-react';
+import { CheckCircle2, Clock, FileDown, Flame, ListChecks, RotateCcw, TrendingUp } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -7,7 +7,7 @@ import { axisProps, gridProps, tooltipProps } from '@/components/charts/chartThe
 import { StatTile } from '@/components/charts/StatTile';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
+import { Button, ButtonLink } from '@/components/ui/Button';
 import { Card, CardDescription, CardTitle } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/Feedback';
 import { Select } from '@/components/ui/Field';
@@ -115,7 +115,15 @@ export default function PerformancePage() {
 
   return (
     <>
-      <PageHeader title="Desempenho" description="Acertos, tempo de estudo e o que precisa de revisão." />
+      <PageHeader
+        title="Desempenho"
+        description="Acertos, tempo de estudo e o que precisa de revisão."
+        actions={
+          <ButtonLink to="/relatorios" variant="secondary">
+            <FileDown className="size-4" /> Relatórios e exportação
+          </ButtonLink>
+        }
+      />
 
       {/* Filtros (uma linha acima dos gráficos) */}
       <div className="mb-5 flex flex-wrap items-center gap-2">

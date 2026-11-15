@@ -462,3 +462,37 @@ export interface Simulation extends WithId {
   updatedAt?: Timestamp | null;
   submittedAt?: Timestamp | null;
 }
+
+/* ── Etapa 5 — Um dia na prática jurídica ─────────────────────────── */
+
+export type PracticeCareer = 'advocacia' | 'magistratura' | 'promotoria' | 'defensoria' | 'delegacia';
+export type PracticeTaskKind = 'atendimento' | 'prazo' | 'audiencia' | 'redacao' | 'email' | 'pesquisa' | 'decisao' | 'reuniao';
+
+export interface PracticeTask {
+  time: string;
+  kind: PracticeTaskKind;
+  title: string;
+  context: string;
+  prompt: string;
+  size: 'curta' | 'media';
+}
+
+export interface PracticeDay extends WithId {
+  career: PracticeCareer;
+  area: CaseArea | 'variado';
+  difficulty: CaseDifficulty;
+  title: string;
+  intro: string;
+  tasks: PracticeTask[];
+  answers: string[];
+  status: 'em_andamento' | 'avaliando' | 'concluido';
+  score?: number;
+  evaluation?: {
+    perTask: { score: number; feedback: string; ideal: string }[];
+    summary: string;
+    strengths: string[];
+    toImprove: string[];
+  };
+  createdAt: Timestamp | null;
+  finishedAt?: Timestamp | null;
+}

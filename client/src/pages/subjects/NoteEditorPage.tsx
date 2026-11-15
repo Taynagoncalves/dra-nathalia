@@ -24,6 +24,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { normalizeUrl } from '@/components/materials/LinkFormModal';
+import { ExportMenu } from '@/components/export/ExportMenu';
 import { ErrorBlock, LoadingBlock } from '@/components/ui/States';
 import { materialKeys } from '@/hooks/useMaterials';
 import { useSubject } from '@/hooks/useStudyData';
@@ -154,7 +155,10 @@ function NoteEditor({ uid, noteId, subjectId, subjectName, backTo, initialTitle,
         <Link to={backTo} className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-primary-text">
           <ArrowLeft className="size-4" /> {subjectName}
         </Link>
-        <SaveIndicator state={saveState} />
+        <div className="flex items-center gap-3">
+          <SaveIndicator state={saveState} />
+          <ExportMenu size="sm" load={() => ({ title: title.trim() || 'Anotação', html: editor?.getHTML() ?? '', meta: subjectName })} />
+        </div>
       </div>
 
       <input

@@ -32,6 +32,10 @@ const PresentPage = lazy(() => import('@/pages/teacher/PresentPage'));
 const SimulatorHome = lazy(() => import('@/pages/simulator/SimulatorHome'));
 const CasePage = lazy(() => import('@/pages/simulator/CasePage'));
 const SimulationPage = lazy(() => import('@/pages/simulator/SimulationPage'));
+const AchievementsPage = lazy(() => import('@/pages/achievements/AchievementsPage'));
+const PracticeHome = lazy(() => import('@/pages/practice/PracticeHome'));
+const PracticeDayPage = lazy(() => import('@/pages/practice/PracticeDayPage'));
+const ReportsPage = lazy(() => import('@/pages/reports/ReportsPage'));
 const LiveGuest = lazy(() => import('@/pages/live/LiveGuest'));
 const ThemePreview = lazy(() => import('@/pages/ThemePreview'));
 
@@ -86,6 +90,10 @@ const appRoutes: RouteObject[] = [
           { path: '/simulador', element: page(<SimulatorHome />) },
           { path: '/simulador/casos/:caseId', element: page(<CasePage />) },
           { path: '/simulador/pecas/:simId', element: page(<SimulationPage />) },
+          { path: '/pratica', element: page(<PracticeHome />) },
+          { path: '/pratica/:dayId', element: page(<PracticeDayPage />) },
+          { path: '/conquistas', element: page(<AchievementsPage />) },
+          { path: '/relatorios', element: page(<ReportsPage />) },
           { path: '/desempenho', element: page(<PerformancePage />) },
           { path: '/perfil', element: page(<Profile />) },
           { path: '/em-breve/:slug', element: page(<ComingSoon />) },

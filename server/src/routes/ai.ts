@@ -5,6 +5,7 @@ import { processMaterial } from '../ai/materials.js';
 import { planSchema, studyPlan } from '../ai/plan.js';
 import { answerSchema, deckSchema, evaluateSchema, evaluateTeaching, feedbackSchema, generateDeck, questionSchema, taynaAnswer, taynaFeedback, taynaQuestion } from '../ai/teacher.js';
 import { caseSchema, correctSimulation, generateCase } from '../ai/simulator.js';
+import { evaluatePracticeDay, generatePracticeDay, practiceSchema } from '../ai/practiceDay.js';
 import { rateLimitOrThrow } from '../lib/rateLimit.js';
 import { chatSchema, clearNotebookChat, generateStudio, notebookChat, studioSchema } from '../ai/notebook.js';
 import { finishQuiz, finishSchema, gradeAnswer, quizRequestSchema, startQuiz } from '../ai/quiz.js';
@@ -159,4 +160,18 @@ aiRouter.delete('/cases/:id', async (req, res) => {
   batch.delete(user.collection('caseKeys').doc(caseId));
   await batch.commit();
   res.json({ ok: true, deletedSimulations: sims.size });
+});
+
+/* ── Um dia na prática jurídica ───────────────────────────────────── */
+
+/** POST /api/ai/practice — monta a agenda do dia. */
+aiRouter.post('/practice', async (req, res) => {
+  const body = practiceSchema.parse(req.body);
+  res.json(await withCredit(req.uid!, 'pratica', () => generatePracticeDay(requireDb(), req.uid!, body)));
+});
+
+/** POST /api/ai/practice/:id/evaluate — avalia o expediente (as respostas ficam no documento). */
+aiRouter.post('/practice/:id/evaluate', async (req, res) => {
+  const dayId = id.parse(req.params.id);
+  res.json(await withCredit(req.uid!, 'avaliacao_pratica', () => evaluatePracticeDay(requireDb(), req.uid!, dayId)));
 });

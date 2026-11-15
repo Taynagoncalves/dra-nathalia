@@ -3,7 +3,10 @@ import { useState } from 'react';
 import { QuizConfigModal } from '@/components/quiz/QuizConfigModal';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { ExportMenu } from '@/components/export/ExportMenu';
 import { Breadcrumb } from '@/components/ui/Breadcrumb';
+import { useUid } from '@/hooks/useUid';
+import { collectNotesHtml } from '@/services/firebase/exportNotes';
 import { Button } from '@/components/ui/Button';
 import { IconTile } from '@/components/ui/IconTile';
 import { ErrorBlock, LoadingBlock } from '@/components/ui/States';
@@ -23,6 +26,7 @@ export default function SubjectPage() {
   const subject = useSubject(subjectId);
   const projects = useProjects();
   const timer = useStudyTimer();
+  const uid = useUid();
   const [params, setParams] = useSearchParams();
   const [quizOpen, setQuizOpen] = useState(false);
   const tab = (['materiais', 'caderno', 'assuntos', 'questoes'] as const).find((t) => t === params.get('aba')) ?? 'materiais';
@@ -48,6 +52,14 @@ export default function SubjectPage() {
         title={s.name}
         actions={
           <>
+          <ExportMenu
+            label="Exportar anotações"
+            load={async () => {
+              const r = await collectNotesHtml(uid, [s]);
+              if (!r.count) throw new Error('Esta matéria ainda não tem anotações.');
+              return { title: `Anotações — ${s.name}`, html: r.html, meta: `${r.count} anotação(ões)` };
+            }}
+          />
           <Button variant="secondary" onClick={() => setQuizOpen(true)}>
             <Sparkles className="size-4" /> Gerar quiz
           </Button>
