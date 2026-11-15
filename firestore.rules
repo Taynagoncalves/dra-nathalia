@@ -1,0 +1,24 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // Documento do usuário
+    match /users/{uid} {
+      allow read, write: if isOwner(uid);
+
+      // Todas as subcoleções (projects, subjects, folders, materials, notes,
+      // questions, attempts, quizzes, errors, studySessions, goals, events…)
+      // e subcoleções aninhadas (ex.: materials/{id}/chunks na Etapa 2).
+      match /{document=**} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+
+    // Etapa 3 (liveSessions) será adicionada aqui. Todo o resto é negado.
+  }
+}

@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+.firebase/
+.firebaserc
+serviceAccount*.json
+*-firebase-adminsdk-*.json
+.DS_Store
