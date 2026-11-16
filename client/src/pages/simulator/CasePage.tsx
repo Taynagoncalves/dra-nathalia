@@ -8,6 +8,8 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { CaseDocuments } from '@/components/simulator/CaseDocuments';
 import { RoleWheel } from '@/components/simulator/RoleWheel';
 import { SimDisclaimer } from '@/components/simulator/SimDisclaimer';
+import { AiProgress, isStaleJob } from '@/components/ui/AiProgress';
+import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 import { Breadcrumb } from '@/components/ui/Breadcrumb';
 import { Button, ButtonLink } from '@/components/ui/Button';
@@ -38,6 +40,45 @@ export default function CasePage() {
   if (legalCase.isError) return <ErrorBlock error={legalCase.error} onRetry={() => legalCase.refetch()} />;
   const c = legalCase.data;
   if (!c) return <NotFound />;
+
+  const crumbs = <Breadcrumb items={[{ label: 'Simulador Jurídico', to: '/simulador' }, { label: c.status === 'pronto' || !c.status ? c.title : 'Novo caso' }]} />;
+  if (c.status === 'gerando' && !isStaleJob(c.jobStartedAt)) {
+    return (
+      <>
+        {crumbs}
+        <AiProgress
+          title="Montando o seu caso…"
+          startedAt={c.jobStartedAt}
+          typicalSec={50}
+          steps={['Inventando as partes e o conflito…', 'Escrevendo os fatos…', 'Redigindo contratos, conversas e comprovantes…', 'Preparando a situação de cada papel…']}
+        />
+      </>
+    );
+  }
+  if (c.status === 'erro' || c.status === 'gerando') {
+    return (
+      <>
+        {crumbs}
+        <Card className="mx-auto mt-6 max-w-lg space-y-4 p-6">
+          <Alert variant="error" title="O caso não foi gerado">
+            {c.error ?? 'A geração demorou demais e foi interrompida.'} O uso da IA foi devolvido.
+          </Alert>
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              variant="secondary"
+              onClick={async () => {
+                await deleteCase(caseId).catch(() => {});
+                qc.invalidateQueries({ queryKey: ['cases', uid] });
+                navigate('/simulador');
+              }}
+            >
+              <Trash2 className="size-4" /> Descartar e voltar
+            </Button>
+          </div>
+        </Card>
+      </>
+    );
+  }
 
   const mine = (sims.data ?? []).filter((s) => s.caseId === caseId);
   const doneRoles = [...new Set(mine.map((s) => s.role))];

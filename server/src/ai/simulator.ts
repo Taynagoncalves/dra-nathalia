@@ -1,6 +1,7 @@
 import { FieldValue, type Firestore } from 'firebase-admin/firestore';
 import { z } from 'zod';
 import { userCol } from '../lib/firestoreAdmin.js';
+import { jobErrorMessage, notifyUser } from '../lib/notify.js';
 import { HttpError } from '../middleware/errorHandler.js';
 import { generateStructured } from './client.js';
 import { formatSourceDocs, loadSourceDocs } from './materials.js';
@@ -79,13 +80,50 @@ Regras do caso:
 
 const DIFF_TEXT = { facil: 'fácil (uma tese principal, fatos diretos)', medio: 'médio (duas teses e um detalhe de prova)', dificil: 'difícil (preliminares, teses concorrentes e uma pegadinha processual legítima)' };
 
-export async function generateCase(db: Firestore, uid: string, input: z.infer<typeof caseSchema>) {
-  let xml = '';
+/** Tarefa "presa" (o server reiniciou no meio): depois disso pode ser refeita. */
+export const STALE_JOB_MS = 10 * 60_000;
+
+/**
+ * Cria o caso já com status "gerando" e responde na hora com o ID;
+ * a IA preenche em segundo plano e a pessoa é avisada quando terminar.
+ */
+export async function startCase(db: Firestore, uid: string, input: z.infer<typeof caseSchema>, onFail: () => Promise<void>) {
   let subjectName: string | null = null;
   if (input.subjectId) {
     const subject = await userCol(db, uid, 'subjects').doc(input.subjectId).get();
     if (!subject.exists) throw new HttpError(404, 'Matéria não encontrada.');
     subjectName = subject.get('name');
+  }
+  const ref = userCol(db, uid, 'cases').doc();
+  await ref.set({
+    title: 'Montando o caso…',
+    summary: '',
+    facts: '',
+    parties: { autor: '', reu: '' },
+    documents: [],
+    roles: { autor: '', reu: '', magistrado: '' },
+    area: input.area,
+    difficulty: input.difficulty,
+    subjectId: input.subjectId ?? null,
+    status: 'gerando',
+    jobStartedAt: Date.now(),
+    createdAt: FieldValue.serverTimestamp(),
+  });
+  const url = `/simulador/casos/${ref.id}`;
+  generateCase(db, uid, input, subjectName, ref)
+    .then((title) => notifyUser(db, uid, { title: 'Seu caso está pronto', body: `${title}. Gire a roleta para sortear o seu papel.`, url, tag: `caso-${ref.id}` }))
+    .catch(async (err) => {
+      const error = jobErrorMessage(err, 'Não foi possível gerar o caso.');
+      await ref.update({ status: 'erro', error }).catch(() => {});
+      await onFail().catch(() => {});
+      await notifyUser(db, uid, { title: 'O caso não foi gerado', body: error, url: '/simulador', tag: `caso-${ref.id}` });
+    });
+  return ref.id;
+}
+
+async function generateCase(db: Firestore, uid: string, input: z.infer<typeof caseSchema>, subjectName: string | null, ref: FirebaseFirestore.DocumentReference) {
+  let xml = '';
+  if (input.subjectId) {
     const mats = await userCol(db, uid, 'materials').where('subjectId', '==', input.subjectId).get();
     const ids = mats.docs.filter((d) => d.get('kind') === 'note' || d.get('aiStatus') === 'pronto').map((d) => d.id);
     const docs = await loadSourceDocs(db, uid, ids.slice(0, 20));
@@ -111,24 +149,20 @@ export async function generateCase(db: Firestore, uid: string, input: z.infer<ty
       },
     ],
   });
-  const ref = userCol(db, uid, 'cases').doc();
-  const data = {
-    title: r.title.slice(0, 150),
+  const title = r.title.slice(0, 150);
+  const batch = db.batch();
+  batch.update(ref, {
+    title,
     summary: r.summary,
     facts: r.facts,
     parties: r.parties,
     documents: r.documents.slice(0, 8),
     roles: r.roles,
-    area: input.area,
-    difficulty: input.difficulty,
-    subjectId: input.subjectId ?? null,
-    createdAt: FieldValue.serverTimestamp(),
-  };
-  const batch = db.batch();
-  batch.set(ref, data);
+    status: 'pronto',
+  });
   batch.set(userCol(db, uid, 'caseKeys').doc(ref.id), { ...r.keys, createdAt: FieldValue.serverTimestamp() });
   await batch.commit();
-  return { id: ref.id, ...data, createdAt: null };
+  return title;
 }
 
 /* ── Correção ───────────────────────────────────────────────────── */
@@ -182,11 +216,18 @@ Como corrigir:
 - modelAnswer: uma resposta-modelo completa da peça cabível, bem estruturada (endereçamento, qualificação, fatos/relatório, fundamentos, pedidos/dispositivo, fechamento), usando os fatos e os documentos do caso. Use os nomes fictícios do caso. Não invente número de artigo de que não tenha certeza.
 - Seja justo e rigoroso: aceite outras palavras quando o conteúdo jurídico estiver correto.`;
 
-export async function correctSimulation(db: Firestore, uid: string, simulationId: string) {
+/**
+ * Confere a peça, marca "corrigindo" e responde na hora; a correção roda em
+ * segundo plano e a pessoa é avisada (no site e no celular) quando terminar.
+ */
+export async function startCorrection(db: Firestore, uid: string, simulationId: string, onFail: () => Promise<void>) {
   const simRef = userCol(db, uid, 'simulations').doc(simulationId);
   const sim = await simRef.get();
   if (!sim.exists) throw new HttpError(404, 'Simulação não encontrada.');
   if (sim.get('status') === 'corrigida') throw new HttpError(409, 'Esta peça já foi corrigida.');
+  if (sim.get('status') === 'corrigindo' && Date.now() - Number(sim.get('jobStartedAt') ?? 0) < STALE_JOB_MS) {
+    throw new HttpError(409, 'Esta peça já está sendo corrigida.');
+  }
   const text = String(sim.get('text') ?? '').trim();
   if (text.length < 200) throw new HttpError(422, 'A peça está muito curta para corrigir (mínimo de 200 caracteres).');
   if (text.length > 60_000) throw new HttpError(422, 'A peça passou do limite de 60 mil caracteres.');
@@ -203,8 +244,11 @@ export async function correctSimulation(db: Firestore, uid: string, simulationId
     .map((d, i) => `Documento ${i + 1} — ${d.title} (${d.kind}${d.date ? `, ${d.date}` : ''}):\n${d.content}`)
     .join('\n\n');
 
-  await simRef.update({ status: 'corrigindo' });
-  try {
+  await simRef.update({ status: 'corrigindo', jobStartedAt: Date.now(), correctionError: FieldValue.delete() });
+  const url = `/simulador/pecas/${simulationId}`;
+  const caseTitle = String(c.title);
+
+  const run = async () => {
     const r = await generateStructured({
       schema: Correction,
       system: CORRECT_SYSTEM,
@@ -249,9 +293,15 @@ export async function correctSimulation(db: Firestore, uid: string, simulationId
       essentials: key?.essentials ?? [],
     };
     await simRef.update({ status: 'corrigida', correction, score: overall, submittedAt: FieldValue.serverTimestamp() });
-    return correction;
-  } catch (err) {
-    await simRef.update({ status: 'rascunho' }).catch(() => {});
-    throw err;
-  }
+    return overall;
+  };
+
+  run()
+    .then((overall) => notifyUser(db, uid, { title: `Peça corrigida: ${overall}/100`, body: `${caseTitle} — ${ROLE_TEXT[role]}. Veja a correção e o modelo de resposta.`, url, tag: `peca-${simulationId}` }))
+    .catch(async (err) => {
+      const error = jobErrorMessage(err, 'Não foi possível corrigir a peça.');
+      await simRef.update({ status: 'rascunho', correctionError: error }).catch(() => {});
+      await onFail().catch(() => {});
+      await notifyUser(db, uid, { title: 'A correção não terminou', body: `${error} O seu texto continua salvo.`, url, tag: `peca-${simulationId}` });
+    });
 }

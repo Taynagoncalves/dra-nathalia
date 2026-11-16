@@ -8,7 +8,6 @@ import {
   Clock,
   FileText,
   Gavel,
-  Loader2,
   Mail,
   MessagesSquare,
   Search,
@@ -22,6 +21,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { AiProgress, isStaleJob } from '@/components/ui/AiProgress';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 import { Breadcrumb } from '@/components/ui/Breadcrumb';
@@ -58,7 +58,12 @@ export default function PracticeDayPage() {
   const uid = useUid();
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const day = useQuery({ queryKey: ['practiceDay', uid, dayId], queryFn: async () => docWithId<PracticeDay>(await getDoc(userDoc(uid, 'practiceDays', dayId))) });
+  const day = useQuery({
+    queryKey: ['practiceDay', uid, dayId],
+    queryFn: async () => docWithId<PracticeDay>(await getDoc(userDoc(uid, 'practiceDays', dayId))),
+    // enquanto a IA trabalha, relê a cada 4 s
+    refetchInterval: (q) => (q.state.data?.status === 'gerando' || q.state.data?.status === 'avaliando' ? 4000 : false),
+  });
   const [deleting, setDeleting] = useState(false);
 
   if (day.isLoading) return <LoadingBlock label="Abrindo o expediente…" />;
@@ -81,7 +86,36 @@ export default function PracticeDayPage() {
       <div className="mb-4 flex flex-wrap gap-1.5">
         <Badge variant="primary">{CAREER_LABELS[d.career]}</Badge>
       </div>
-      {d.status === 'concluido' && d.evaluation ? <Results day={d} /> : <Workday day={d} onDone={() => day.refetch()} />}
+      {d.status === 'gerando' && !isStaleJob(d.jobStartedAt) ? (
+        <AiProgress
+          title="Montando a agenda do seu dia…"
+          startedAt={d.jobStartedAt}
+          typicalSec={45}
+          steps={['Escolhendo os clientes e os processos…', 'Marcando os horários…', 'Escrevendo cada situação…']}
+        />
+      ) : d.status === 'erro' || d.status === 'gerando' ? (
+        <Alert variant="error" title="A agenda não foi montada">
+          {d.error ?? 'A geração demorou demais e foi interrompida.'} O uso da IA foi devolvido. Exclua este dia (lixeira acima) e comece outro.
+        </Alert>
+      ) : d.status === 'avaliando' && !isStaleJob(d.jobStartedAt) ? (
+        <AiProgress
+          title="Avaliando o seu expediente…"
+          startedAt={d.jobStartedAt}
+          typicalSec={50}
+          steps={['Lendo as suas respostas…', 'Dando nota a cada tarefa…', 'Escrevendo as respostas ideais…']}
+        />
+      ) : d.status === 'concluido' && d.evaluation ? (
+        <Results day={d} />
+      ) : (
+        <>
+          {d.evaluationError && (
+            <Alert variant="error" title="A avaliação não terminou" className="mb-4">
+              {d.evaluationError} As suas respostas continuam salvas; é só encerrar o expediente de novo.
+            </Alert>
+          )}
+          <Workday day={d} onDone={() => day.refetch()} />
+        </>
+      )}
       <ConfirmDialog
         open={deleting}
         onClose={() => setDeleting(false)}
@@ -111,7 +145,7 @@ function Workday({ day, onDone }: { day: PracticeDay; onDone: () => void }) {
   const [answers, setAnswers] = useState<string[]>(() => day.tasks.map((_, i) => day.answers[i] ?? ''));
   const [saved, setSaved] = useState(true);
   const [confirm, setConfirm] = useState(false);
-  const [evaluating, setEvaluating] = useState(day.status === 'avaliando');
+  const [evaluating, setEvaluating] = useState(false);
   const latest = useRef(answers);
   latest.current = answers;
 
@@ -131,25 +165,15 @@ function Workday({ day, onDone }: { day: PracticeDay; onDone: () => void }) {
     setEvaluating(true);
     try {
       await save();
+      // o server responde na hora; a avaliação roda em segundo plano
       await evaluatePracticeDay(day.id);
       qc.invalidateQueries({ queryKey: ['practiceDays', uid] });
-      toast.success('Expediente avaliado!');
       onDone();
     } catch (err) {
-      toast.error(friendlyError(err, 'Não foi possível avaliar o dia.'));
+      toast.error(friendlyError(err, 'Não foi possível enviar o dia para avaliação.'));
       setEvaluating(false);
     }
   };
-
-  if (evaluating) {
-    return (
-      <Card className="mx-auto mt-8 max-w-lg p-8 text-center">
-        <Loader2 className="mx-auto mb-3 size-8 animate-spin text-primary-text" />
-        <p className="font-semibold text-text">Avaliando o seu dia…</p>
-        <p className="mt-1 text-sm text-text-muted">A IA confere cada tarefa e escreve uma resposta ideal. Leva menos de um minuto.</p>
-      </Card>
-    );
-  }
 
   const task = day.tasks[current]!;
   const kind = KIND[task.kind] ?? KIND.atendimento;
@@ -225,7 +249,7 @@ function Workday({ day, onDone }: { day: PracticeDay; onDone: () => void }) {
               <ArrowLeft className="size-4" /> Anterior
             </Button>
             {isLast ? (
-              <Button onClick={() => setConfirm(true)} disabled={!answered}>
+              <Button onClick={() => setConfirm(true)} disabled={!answered} loading={evaluating}>
                 <Briefcase className="size-4" /> Encerrar o expediente
               </Button>
             ) : (

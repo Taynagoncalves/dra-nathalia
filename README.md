@@ -216,6 +216,18 @@ mais tarde.
 - **Limites:** cada quiz lê no máximo ~180 mil caracteres do material. O limite diário (`AI_DAILY_LIMIT`) e o
   contador em `users/{uid}/aiUsage` (só o server escreve) controlam o uso. Falhas não contam no limite.
 
+**Velocidade**
+
+- No plano gratuito, o Google coloca os pedidos numa fila: uma resposta que levaria 3–5 s pode levar
+  40–90 s nos horários cheios, em qualquer modelo gratuito. Ativar o faturamento na mesma chave
+  (Google AI Studio → Billing) dá prioridade às chamadas e não exige mudar o código.
+- Tarefas simples pensam menos: `effort: 'low'` → `thinkingLevel: MINIMAL`, `'medium'` → `LOW`; as
+  correções (`'high'`) usam o padrão do modelo. Modelo que recusar o nível é chamado sem ele.
+- Tarefas longas rodam em **segundo plano** (como o quiz): gerar caso, corrigir peça, montar e avaliar o
+  "Um dia na prática". O server responde na hora, grava o status no documento (`gerando`, `corrigindo`,
+  `avaliando`) e, ao terminar, cria uma notificação no site e envia push para o celular. A tela mostra o
+  tempo decorrido e pode ser fechada. Tarefa parada há mais de 10 min (server reiniciado) pode ser refeita.
+
 ---
 
 ## API (`/server`)
@@ -243,9 +255,9 @@ Todas as rotas, exceto `/api/health`, exigem `Authorization: Bearer <Firebase ID
 | POST | `/api/ai/decks` · `/api/ai/teach/evaluate` | slides com IA · avaliação do ensino oral |
 | POST | `/api/ai/tayna/question` · `answer` · `feedback` | perguntas, reações e feedback da Tayna |
 | POST | `/api/live` · `/api/live/:code/suggest` · `evaluate` · `end` | sessão ao vivo (Tayna de verdade) |
-| POST | `/api/ai/cases` · DELETE `/api/ai/cases/:id` | gera / exclui um caso do Simulador |
-| POST | `/api/ai/simulations/:id/correct` | corrige a peça (8 critérios, erros, linha a linha e modelo) |
-| POST | `/api/ai/practice` · `/api/ai/practice/:id/evaluate` | “Um dia na prática jurídica”: agenda e avaliação |
+| POST | `/api/ai/cases` · DELETE `/api/ai/cases/:id` | começa a gerar (202, em segundo plano) / exclui um caso do Simulador |
+| POST | `/api/ai/simulations/:id/correct` | começa a correção (202, em segundo plano): 8 critérios, erros, linha a linha e modelo |
+| POST | `/api/ai/practice` · `/api/ai/practice/:id/evaluate` | “Um dia na prática jurídica”: agenda e avaliação (202, em segundo plano) |
 | POST | `/api/ai/plan` | plano do dia (“O que devo estudar agora?” com IA) |
 | POST | `/api/ai/notebook/studio` | Caderno IA: resumo, guia, FAQ, linha do tempo ou mapa mental |
 | DELETE | `/api/projects/:id` | exclui o projeto com todas as matérias e o conteúdo delas |

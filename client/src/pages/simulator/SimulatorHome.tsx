@@ -141,6 +141,8 @@ export default function SimulatorHome() {
                     <span className="mt-auto flex flex-wrap gap-1 pt-1">
                       <Badge variant="primary">{AREA_LABELS[c.area]}</Badge>
                       <Badge variant="neutral">{DIFFICULTY_LABELS[c.difficulty]}</Badge>
+                      {c.status === 'gerando' && <Badge variant="info">Gerando…</Badge>}
+                      {c.status === 'erro' && <Badge variant="error">Falhou</Badge>}
                       {ROLES.map((r) => {
                         const s = done.find((x) => x.role === r && x.status === 'corrigida');
                         return s ? (
@@ -223,7 +225,7 @@ function NewCaseModal({ open, onClose }: { open: boolean; onClose: () => void })
       open={open}
       onClose={busy ? () => {} : onClose}
       title="Novo caso concreto"
-      description="A IA cria um caso fictício com documentos. Leva de 20 a 60 segundos."
+      description="A IA cria um caso fictício com documentos. Pode levar alguns minutos: você é avisada quando ficar pronto."
       size="lg"
       footer={
         <>
@@ -231,7 +233,7 @@ function NewCaseModal({ open, onClose }: { open: boolean; onClose: () => void })
             Cancelar
           </Button>
           <Button onClick={submit} loading={busy}>
-            <Sparkles className="size-4" /> {busy ? 'Montando o caso…' : 'Gerar caso'}
+            <Sparkles className="size-4" /> {busy ? 'Enviando…' : 'Gerar caso'}
           </Button>
         </>
       }

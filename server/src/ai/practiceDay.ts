@@ -1,10 +1,11 @@
 import { FieldValue, type Firestore } from 'firebase-admin/firestore';
 import { z } from 'zod';
 import { userCol } from '../lib/firestoreAdmin.js';
+import { jobErrorMessage, notifyUser } from '../lib/notify.js';
 import { HttpError } from '../middleware/errorHandler.js';
 import { generateStructured } from './client.js';
 import { LEGAL_INTEGRITY } from './prompts.js';
-import { AREAS, DIFFICULTIES } from './simulator.js';
+import { AREAS, DIFFICULTIES, STALE_JOB_MS } from './simulator.js';
 
 /**
  * Etapa 5 — "Um dia na prática jurídica": a IA monta a agenda de um dia de
@@ -57,7 +58,23 @@ ${LEGAL_INTEGRITY}
 
 const DIFF_TEXT = { facil: 'fácil (estagiário)', medio: 'médio (recém-formado)', dificil: 'difícil (profissional experiente)' };
 
-export async function generatePracticeDay(db: Firestore, uid: string, input: z.infer<typeof practiceSchema>) {
+/** Cria o dia com status "gerando" e responde na hora; a IA monta a agenda em segundo plano. */
+export async function startPracticeDay(db: Firestore, uid: string, input: z.infer<typeof practiceSchema>, onFail: () => Promise<void>) {
+  const ref = userCol(db, uid, 'practiceDays').doc();
+  await ref.set({ ...input, title: 'Montando a agenda…', intro: '', tasks: [], answers: [], status: 'gerando', jobStartedAt: Date.now(), createdAt: FieldValue.serverTimestamp() });
+  const url = `/pratica/${ref.id}`;
+  generatePracticeDay(input, ref)
+    .then((title) => notifyUser(db, uid, { title: 'Seu dia na prática está pronto', body: `${title}: 5 tarefas esperando por você.`, url, tag: `pratica-${ref.id}` }))
+    .catch(async (err) => {
+      const error = jobErrorMessage(err, 'Não foi possível montar o dia.');
+      await ref.update({ status: 'erro', error }).catch(() => {});
+      await onFail().catch(() => {});
+      await notifyUser(db, uid, { title: 'O dia na prática não foi montado', body: error, url: '/pratica', tag: `pratica-${ref.id}` });
+    });
+  return ref.id;
+}
+
+async function generatePracticeDay(input: z.infer<typeof practiceSchema>, ref: FirebaseFirestore.DocumentReference) {
   const r = await generateStructured({
     schema: DayOut,
     system: DAY_SYSTEM,
@@ -73,18 +90,9 @@ export async function generatePracticeDay(db: Firestore, uid: string, input: z.i
       },
     ],
   });
-  const ref = userCol(db, uid, 'practiceDays').doc();
-  const data = {
-    ...input,
-    title: r.title.slice(0, 150),
-    intro: r.intro,
-    tasks: r.tasks.slice(0, 6),
-    answers: r.tasks.slice(0, 6).map(() => ''),
-    status: 'em_andamento',
-    createdAt: FieldValue.serverTimestamp(),
-  };
-  await ref.set(data);
-  return { id: ref.id, ...data, createdAt: null };
+  const title = r.title.slice(0, 150);
+  await ref.update({ title, intro: r.intro, tasks: r.tasks.slice(0, 6), answers: r.tasks.slice(0, 6).map(() => ''), status: 'em_andamento' });
+  return title;
 }
 
 const Evaluation = z.object({
@@ -101,17 +109,24 @@ ${LEGAL_INTEGRITY}
 Para cada tarefa (index começa em 0): nota de 0 a 10 (score), feedback direto e específico (2 a 4 frases: o que acertou, o que errou ou faltou) e uma resposta ideal (ideal) no tamanho pedido. Resposta vazia vale 0 e o feedback diz que ficou sem resposta. Seja justo: aceite outras palavras quando o conteúdo jurídico estiver certo.
 summary: 2 a 4 frases sobre o desempenho no dia. strengths: pontos fortes. toImprove: o que estudar.`;
 
-export async function evaluatePracticeDay(db: Firestore, uid: string, dayId: string) {
+/** Confere, marca "avaliando" e responde na hora; a avaliação roda em segundo plano. */
+export async function startPracticeEvaluation(db: Firestore, uid: string, dayId: string, onFail: () => Promise<void>) {
   const ref = userCol(db, uid, 'practiceDays').doc(dayId);
   const snap = await ref.get();
   if (!snap.exists) throw new HttpError(404, 'Dia de prática não encontrado.');
   if (snap.get('status') === 'concluido') throw new HttpError(409, 'Este dia já foi avaliado.');
+  if (snap.get('status') === 'avaliando' && Date.now() - Number(snap.get('jobStartedAt') ?? 0) < STALE_JOB_MS) {
+    throw new HttpError(409, 'Este dia já está sendo avaliado.');
+  }
+  if (snap.get('status') === 'gerando' || snap.get('status') === 'erro') throw new HttpError(409, 'A agenda deste dia não ficou pronta.');
   const tasks = snap.get('tasks') as z.infer<typeof DayOut>['tasks'];
   const answers = ((snap.get('answers') as string[] | undefined) ?? []).map((a) => String(a ?? '').slice(0, 8000));
   if (!answers.some((a) => a.trim())) throw new HttpError(422, 'Responda pelo menos uma tarefa antes de encerrar o expediente.');
 
-  await ref.update({ status: 'avaliando' });
-  try {
+  await ref.update({ status: 'avaliando', jobStartedAt: Date.now(), evaluationError: FieldValue.delete() });
+  const url = `/pratica/${dayId}`;
+
+  const run = async () => {
     const r = await generateStructured({
       schema: Evaluation,
       system: EVAL_SYSTEM,
@@ -141,9 +156,15 @@ export async function evaluatePracticeDay(db: Firestore, uid: string, dayId: str
     const score = Math.round((perTask.reduce((s, t) => s + t.score, 0) / perTask.length) * 10);
     const evaluation = { perTask, summary: r.summary, strengths: r.strengths, toImprove: r.toImprove };
     await ref.update({ status: 'concluido', score, evaluation, finishedAt: FieldValue.serverTimestamp() });
-    return { score, ...evaluation };
-  } catch (err) {
-    await ref.update({ status: 'em_andamento' }).catch(() => {});
-    throw err;
-  }
+    return score;
+  };
+
+  run()
+    .then((score) => notifyUser(db, uid, { title: `Expediente avaliado: ${score}/100`, body: 'Veja o feedback e a resposta ideal de cada tarefa.', url, tag: `pratica-${dayId}` }))
+    .catch(async (err) => {
+      const error = jobErrorMessage(err, 'Não foi possível avaliar o dia.');
+      await ref.update({ status: 'em_andamento', evaluationError: error }).catch(() => {});
+      await onFail().catch(() => {});
+      await notifyUser(db, uid, { title: 'A avaliação não terminou', body: `${error} As suas respostas continuam salvas.`, url, tag: `pratica-${dayId}` });
+    });
 }

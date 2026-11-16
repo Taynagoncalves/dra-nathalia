@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
-import { ApiError as GeminiApiError, GoogleGenAI } from '@google/genai';
+import { ApiError as GeminiApiError, GoogleGenAI, type ThinkingLevel } from '@google/genai';
 import { z } from 'zod';
 import { aiProvider, env } from '../config/env.js';
 import { HttpError } from '../middleware/errorHandler.js';
@@ -69,13 +69,31 @@ export function jsonSchemaOf(schema: z.ZodType) {
 
 /** Se a API recusar o formato estruturado, passamos a descrevê-lo no texto do pedido. */
 let geminiSchemaUnsupported = false;
+/** Modelos que recusaram o nível de raciocínio (thinkingLevel). */
+const thinkingUnsupported = new Set<string>();
 
 async function callGemini<S extends z.ZodType>(req: StructuredRequest<S>): Promise<Attempt> {
   const schema = jsonSchemaOf(req.schema);
   // Modelo principal + reservas: se um estiver sobrecarregado (503) ou indisponível (404/500), tenta o próximo.
   const models = [env.GEMINI_MODEL, ...env.GEMINI_FALLBACK_MODELS.split(',').map((m) => m.trim()).filter(Boolean)];
   let model = models[0]!;
-  const send = (structured: boolean) =>
+  // Tarefas simples pensam menos (respondem mais rápido); "high" (correções) usa o padrão do modelo.
+  const thinkingLevel = req.effort === 'low' ? 'MINIMAL' : req.effort === 'medium' ? 'LOW' : null;
+  const send = async (structured: boolean) => {
+    const useThinking = thinkingLevel && !thinkingUnsupported.has(model);
+    try {
+      return await sendOnce(structured, useThinking ? thinkingLevel : null);
+    } catch (err) {
+      // modelo que não aceita o nível de raciocínio: lembra e repete sem ele
+      if (useThinking && err instanceof GeminiApiError && err.status === 400 && /think/i.test(err.message)) {
+        console.warn(`Gemini ${model} não aceita thinkingLevel=${thinkingLevel}; usando o padrão.`);
+        thinkingUnsupported.add(model);
+        return sendOnce(structured, null);
+      }
+      throw err;
+    }
+  };
+  const sendOnce = (structured: boolean, level: string | null) =>
     gemini!.models.generateContent({
       model,
       contents: [{ role: 'user', parts: req.content.map((c) => ({ text: c.text })) }],
@@ -86,6 +104,7 @@ async function callGemini<S extends z.ZodType>(req: StructuredRequest<S>): Promi
         responseMimeType: 'application/json',
         ...(structured ? { responseJsonSchema: schema } : {}),
         maxOutputTokens: req.maxTokens ?? 16000,
+        ...(level ? { thinkingConfig: { thinkingLevel: level as ThinkingLevel } } : {}),
       },
     });
   const request = async (structured: boolean) => {

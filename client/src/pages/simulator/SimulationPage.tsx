@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { serverTimestamp, updateDoc } from 'firebase/firestore';
-import { Dices, FileText, Loader2, Send } from 'lucide-react';
+import { Dices, FileText, Send } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { CaseDocuments } from '@/components/simulator/CaseDocuments';
 import { CorrectionView } from '@/components/simulator/CorrectionView';
 import { SimDisclaimer } from '@/components/simulator/SimDisclaimer';
+import { AiProgress, isStaleJob } from '@/components/ui/AiProgress';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 import { Breadcrumb } from '@/components/ui/Breadcrumb';
@@ -66,6 +67,13 @@ export default function SimulationPage() {
           <SimDisclaimer className="mb-5" />
           <CorrectionView sim={s} correction={s.correction} subjectId={c?.subjectId ?? null} onSaved={() => sim.refetch()} />
         </>
+      ) : s.status === 'corrigindo' && !isStaleJob(s.jobStartedAt) ? (
+        <AiProgress
+          title="Corrigindo a sua peça…"
+          startedAt={s.jobStartedAt}
+          typicalSec={70}
+          steps={['Lendo o caso e os documentos…', 'Identificando a peça que você fez…', 'Avaliando os 8 critérios…', 'Corrigindo linha por linha…', 'Escrevendo o modelo de resposta…']}
+        />
       ) : (
         <Editor sim={s} legalCase={c ?? null} onCorrected={() => sim.refetch()} />
       )}
@@ -80,7 +88,7 @@ function Editor({ sim, legalCase, onCorrected }: { sim: Simulation; legalCase: L
   const [text, setText] = useState(sim.text);
   const [saveState, setSaveState] = useState<'salvo' | 'pendente' | 'salvando' | 'erro'>('salvo');
   const [confirm, setConfirm] = useState(false);
-  const [correcting, setCorrecting] = useState(sim.status === 'corrigindo');
+  const [correcting, setCorrecting] = useState(false);
   const latest = useRef({ pieceTitle, text });
   latest.current = { pieceTitle, text };
 
@@ -117,12 +125,12 @@ function Editor({ sim, legalCase, onCorrected }: { sim: Simulation; legalCase: L
     setCorrecting(true);
     try {
       await save();
+      // o server responde na hora; a correção roda em segundo plano
       await correctSimulation(sim.id);
       qc.invalidateQueries({ queryKey: ['simulations', uid] });
-      toast.success('Peça corrigida!');
       onCorrected();
     } catch (err) {
-      toast.error(friendlyError(err, 'Não foi possível corrigir a peça.'));
+      toast.error(friendlyError(err, 'Não foi possível enviar a peça para correção.'));
       setCorrecting(false);
     }
   };
@@ -130,16 +138,6 @@ function Editor({ sim, legalCase, onCorrected }: { sim: Simulation; legalCase: L
   const chars = text.trim().length;
   const words = text.trim() ? text.trim().split(/\s+/).length : 0;
   const tooShort = chars < MIN_CHARS;
-
-  if (correcting) {
-    return (
-      <Card className="mx-auto mt-8 max-w-lg p-8 text-center">
-        <Loader2 className="mx-auto mb-3 size-8 animate-spin text-primary-text" />
-        <p className="font-semibold text-text">Corrigindo a sua peça…</p>
-        <p className="mt-1 text-sm text-text-muted">A IA confere os 8 critérios, linha por linha, e prepara o modelo de resposta. Pode levar até 2 minutos.</p>
-      </Card>
-    );
-  }
 
   return (
     <>
@@ -193,11 +191,16 @@ function Editor({ sim, legalCase, onCorrected }: { sim: Simulation; legalCase: L
               {words} palavras · {chars.toLocaleString('pt-BR')} caracteres
               {tooShort && chars > 0 && ` (mínimo ${MIN_CHARS})`}
             </span>
-            <Button onClick={() => setConfirm(true)} disabled={tooShort || !legalCase}>
+            <Button onClick={() => setConfirm(true)} disabled={tooShort || !legalCase} loading={correcting}>
               <Send className="size-4" /> Enviar para correção
             </Button>
           </div>
           {sim.status === 'corrigindo' && <Badge variant="warning">A última correção não terminou. Envie de novo.</Badge>}
+          {sim.status === 'rascunho' && sim.correctionError && (
+            <Alert variant="error" title="A correção não terminou">
+              {sim.correctionError} O seu texto continua salvo; é só enviar de novo.
+            </Alert>
+          )}
         </Card>
       </div>
       <SimDisclaimer className="mt-5" />

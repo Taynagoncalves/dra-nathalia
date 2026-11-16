@@ -21,6 +21,7 @@ export function usePracticeDays() {
   const uid = useUid();
   return useQuery({
     queryKey: ['practiceDays', uid],
+    refetchInterval: (q) => (q.state.data?.some((d) => d.status === 'gerando' || d.status === 'avaliando') ? 5000 : false),
     queryFn: async () => docsWithId<PracticeDay>(await getDocs(query(userCol(uid, 'practiceDays'), orderBy('createdAt', 'desc')))),
   });
 }

@@ -423,6 +423,10 @@ export interface LegalCase extends WithId {
   area: CaseArea;
   difficulty: CaseDifficulty;
   subjectId: string | null;
+  /** gerado em segundo plano pelo server */
+  status?: 'gerando' | 'pronto' | 'erro';
+  error?: string;
+  jobStartedAt?: number;
   createdAt: Timestamp | null;
 }
 
@@ -458,6 +462,9 @@ export interface Simulation extends WithId {
   score?: number;
   correction?: SimCorrection;
   errorsSaved?: boolean;
+  /** erro da última correção (o texto continua salvo) */
+  correctionError?: string;
+  jobStartedAt?: number;
   createdAt: Timestamp | null;
   updatedAt?: Timestamp | null;
   submittedAt?: Timestamp | null;
@@ -485,7 +492,10 @@ export interface PracticeDay extends WithId {
   intro: string;
   tasks: PracticeTask[];
   answers: string[];
-  status: 'em_andamento' | 'avaliando' | 'concluido';
+  status: 'gerando' | 'erro' | 'em_andamento' | 'avaliando' | 'concluido';
+  error?: string;
+  evaluationError?: string;
+  jobStartedAt?: number;
   score?: number;
   evaluation?: {
     perTask: { score: number; feedback: string; ideal: string }[];

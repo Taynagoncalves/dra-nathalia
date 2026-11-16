@@ -4,8 +4,8 @@ import { aiModelName, aiProvider, isAiConfigured } from '../config/env.js';
 import { processMaterial } from '../ai/materials.js';
 import { planSchema, studyPlan } from '../ai/plan.js';
 import { answerSchema, deckSchema, evaluateSchema, evaluateTeaching, feedbackSchema, generateDeck, questionSchema, taynaAnswer, taynaFeedback, taynaQuestion } from '../ai/teacher.js';
-import { caseSchema, correctSimulation, generateCase } from '../ai/simulator.js';
-import { evaluatePracticeDay, generatePracticeDay, practiceSchema } from '../ai/practiceDay.js';
+import { caseSchema, startCase, startCorrection } from '../ai/simulator.js';
+import { practiceSchema, startPracticeDay, startPracticeEvaluation } from '../ai/practiceDay.js';
 import { rateLimitOrThrow } from '../lib/rateLimit.js';
 import { chatSchema, clearNotebookChat, generateStudio, notebookChat, studioSchema } from '../ai/notebook.js';
 import { finishQuiz, finishSchema, gradeAnswer, quizRequestSchema, startQuiz } from '../ai/quiz.js';
@@ -67,6 +67,23 @@ async function withCredit<T>(uid: string, kind: string, fn: () => Promise<T>): P
   const refund = await consumeAiCredit(db, uid, kind);
   try {
     return await fn();
+  } catch (err) {
+    await refund().catch(() => {});
+    throw err;
+  }
+}
+
+/**
+ * Tarefa longa em segundo plano: consome 1 uso, `start` confere tudo, grava o
+ * status ("gerando"…) e dispara a IA sem esperar; responde na hora.
+ * Se `start` falhar antes de disparar, o uso é devolvido.
+ */
+async function startWithCredit<T>(uid: string, kind: string, start: (refund: () => Promise<void>) => Promise<T>): Promise<T> {
+  const db = requireDb();
+  if (!isAiConfigured) throw new HttpError(503, 'A IA ainda não foi configurada no servidor (GEMINI_API_KEY).');
+  const refund = await consumeAiCredit(db, uid, kind);
+  try {
+    return await start(refund);
   } catch (err) {
     await refund().catch(() => {});
     throw err;
@@ -136,16 +153,18 @@ aiRouter.post('/tayna/feedback', async (req, res) => {
 
 /* ── Simulador Jurídico ───────────────────────────────────────────── */
 
-/** POST /api/ai/cases — gera um caso fictício com documentos. */
+/** POST /api/ai/cases — começa a gerar um caso fictício (responde na hora com o ID). */
 aiRouter.post('/cases', async (req, res) => {
   const body = caseSchema.parse(req.body);
-  res.json(await withCredit(req.uid!, 'caso', () => generateCase(requireDb(), req.uid!, body)));
+  const caseId = await startWithCredit(req.uid!, 'caso', (refund) => startCase(requireDb(), req.uid!, body, refund));
+  res.status(202).json({ id: caseId });
 });
 
 /** POST /api/ai/simulations/:id/correct — corrige a peça (8 critérios, erros, linha a linha e modelo). */
 aiRouter.post('/simulations/:id/correct', async (req, res) => {
   const simId = id.parse(req.params.id);
-  res.json(await withCredit(req.uid!, 'correcao_peca', () => correctSimulation(requireDb(), req.uid!, simId)));
+  await startWithCredit(req.uid!, 'correcao_peca', (refund) => startCorrection(requireDb(), req.uid!, simId, refund));
+  res.status(202).json({ ok: true });
 });
 
 /** DELETE /api/ai/cases/:id — exclui o caso, o gabarito escondido e as simulações dele. */
@@ -164,14 +183,16 @@ aiRouter.delete('/cases/:id', async (req, res) => {
 
 /* ── Um dia na prática jurídica ───────────────────────────────────── */
 
-/** POST /api/ai/practice — monta a agenda do dia. */
+/** POST /api/ai/practice — começa a montar a agenda do dia (responde na hora com o ID). */
 aiRouter.post('/practice', async (req, res) => {
   const body = practiceSchema.parse(req.body);
-  res.json(await withCredit(req.uid!, 'pratica', () => generatePracticeDay(requireDb(), req.uid!, body)));
+  const dayId = await startWithCredit(req.uid!, 'pratica', (refund) => startPracticeDay(requireDb(), req.uid!, body, refund));
+  res.status(202).json({ id: dayId });
 });
 
 /** POST /api/ai/practice/:id/evaluate — avalia o expediente (as respostas ficam no documento). */
 aiRouter.post('/practice/:id/evaluate', async (req, res) => {
   const dayId = id.parse(req.params.id);
-  res.json(await withCredit(req.uid!, 'avaliacao_pratica', () => evaluatePracticeDay(requireDb(), req.uid!, dayId)));
+  await startWithCredit(req.uid!, 'avaliacao_pratica', (refund) => startPracticeEvaluation(requireDb(), req.uid!, dayId, refund));
+  res.status(202).json({ ok: true });
 });

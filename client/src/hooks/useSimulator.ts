@@ -8,6 +8,7 @@ export function useCases() {
   const uid = useUid();
   return useQuery({
     queryKey: ['cases', uid],
+    refetchInterval: (q) => (q.state.data?.some((c) => c.status === 'gerando') ? 5000 : false),
     queryFn: async () => docsWithId<LegalCase>(await getDocs(query(userCol(uid, 'cases'), orderBy('createdAt', 'desc')))),
   });
 }
@@ -17,6 +18,7 @@ export function useCase(caseId: string | undefined) {
   return useQuery({
     queryKey: ['case', uid, caseId],
     enabled: !!caseId,
+    refetchInterval: (q) => (q.state.data?.status === 'gerando' ? 4000 : false),
     queryFn: async () => docWithId<LegalCase>(await getDoc(userDoc(uid, 'cases', caseId!))),
   });
 }
@@ -35,6 +37,7 @@ export function useSimulation(simId: string | undefined) {
   return useQuery({
     queryKey: ['simulation', uid, simId],
     enabled: !!simId,
+    refetchInterval: (q) => (q.state.data?.status === 'corrigindo' ? 4000 : false),
     queryFn: async () => docWithId<Simulation>(await getDoc(userDoc(uid, 'simulations', simId!))),
   });
 }

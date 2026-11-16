@@ -89,6 +89,10 @@ export default function PracticeHome() {
                 </span>
                 {d.status === 'concluido' ? (
                   <span className={cn('text-lg font-bold tabular-nums', toneText[scoreTone(d.score ?? 0)])}>{d.score}</span>
+                ) : d.status === 'gerando' || d.status === 'avaliando' ? (
+                  <Badge variant="info">{d.status === 'gerando' ? 'Montando…' : 'Avaliando…'}</Badge>
+                ) : d.status === 'erro' ? (
+                  <Badge variant="error">Falhou</Badge>
                 ) : (
                   <Badge variant="warning">
                     {answered}/{d.tasks.length} tarefas
@@ -133,14 +137,14 @@ function NewDayModal({ open, onClose }: { open: boolean; onClose: () => void }) 
       open={open}
       onClose={busy ? () => {} : onClose}
       title="Começar um dia na prática"
-      description="A IA monta a agenda do dia (de 20 segundos a 2 minutos, se a IA gratuita estiver cheia)."
+      description="A IA monta a agenda do dia. Pode levar alguns minutos: você é avisada quando ficar pronto."
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={busy}>
             Cancelar
           </Button>
           <Button onClick={submit} loading={busy}>
-            <Sparkles className="size-4" /> {busy ? 'Montando a agenda…' : 'Abrir o expediente'}
+            <Sparkles className="size-4" /> {busy ? 'Enviando…' : 'Abrir o expediente'}
           </Button>
         </>
       }
