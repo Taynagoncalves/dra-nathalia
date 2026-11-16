@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { aiModelName, aiProvider, isAiConfigured } from '../config/env.js';
 import { processMaterial } from '../ai/materials.js';
 import { planSchema, studyPlan } from '../ai/plan.js';
-import { answerSchema, deckSchema, evaluateSchema, evaluateTeaching, feedbackSchema, generateDeck, questionSchema, taynaAnswer, taynaFeedback, taynaQuestion } from '../ai/teacher.js';
+import { answerSchema, checkSchema, checkUnderstanding, coachAnswer, deckSchema, evaluateSchema, evaluateTeaching, feedbackSchema, generateDeck, questionSchema, taynaAnswer, taynaFeedback, taynaQuestion } from '../ai/teacher.js';
 import { caseSchema, startCase, startCorrection } from '../ai/simulator.js';
 import { practiceSchema, startPracticeDay, startPracticeEvaluation } from '../ai/practiceDay.js';
 import { rateLimitOrThrow } from '../lib/rateLimit.js';
@@ -143,6 +143,22 @@ aiRouter.post('/tayna/answer', async (req, res) => {
   if (!isAiConfigured) throw new HttpError(503, 'A IA ainda não foi configurada no servidor (GEMINI_API_KEY).');
   taynaLimit(req.uid!);
   res.json(await taynaAnswer(body));
+});
+
+/** POST /api/ai/teach/check — "Apresentar para a IA": retorno de entendimento do slide + uma pergunta. */
+aiRouter.post('/teach/check', async (req, res) => {
+  const body = checkSchema.parse(req.body);
+  if (!isAiConfigured) throw new HttpError(503, 'A IA ainda não foi configurada no servidor (GEMINI_API_KEY).');
+  taynaLimit(req.uid!);
+  res.json(await checkUnderstanding(requireDb(), req.uid!, body));
+});
+
+/** POST /api/ai/teach/answer — corrige a resposta à pergunta da IA (com a resposta certa). */
+aiRouter.post('/teach/answer', async (req, res) => {
+  const body = answerSchema.parse(req.body);
+  if (!isAiConfigured) throw new HttpError(503, 'A IA ainda não foi configurada no servidor (GEMINI_API_KEY).');
+  taynaLimit(req.uid!);
+  res.json(await coachAnswer(body));
 });
 
 /** POST /api/ai/tayna/feedback — feedback final da sessão com a Tayna. */

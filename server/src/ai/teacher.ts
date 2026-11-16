@@ -287,3 +287,73 @@ export async function taynaFeedback(db: Firestore, uid: string, input: z.infer<t
     ],
   });
 }
+
+/* ── Apresentar para a IA: retorno de entendimento slide a slide ─── */
+
+export const checkSchema = z.object({
+  deckId: id,
+  slideIndex: z.number().int().min(0),
+  transcript: z.string().trim().min(1).max(20000),
+  level: z.enum(LEVELS).default('intermediario'),
+  /** perguntas já feitas, para não repetir */
+  asked: z.array(z.string().max(500)).max(40).default([]),
+});
+
+const Check = z.object({
+  /** bom = entendeu bem; parcial = no caminho, com lacunas; confuso = há erros conceituais */
+  understanding: z.enum(['bom', 'parcial', 'confuso']),
+  /** 1 a 2 frases, em 2ª pessoa, direto e encorajador */
+  message: z.string(),
+  correct: z.array(z.string()),
+  fixes: z.array(z.object({ said: z.string(), correction: z.string() })),
+  missing: z.array(z.string()),
+  question: z.object({ question: z.string(), expectedAnswer: z.string(), concept: z.string() }),
+});
+
+const CHECK_SYSTEM = `Você é uma professora de Direito ouvindo uma aluna apresentar um slide em voz alta (a fala foi transcrita automaticamente: ignore erros de digitação, repetições e vícios de linguagem).
+
+${LEGAL_INTEGRITY}
+
+Diga, com base SÓ no que ela falou, se ela está entendendo o conteúdo do slide:
+- understanding: "bom" (explicou o essencial corretamente), "parcial" (no caminho certo, mas vago ou incompleto) ou "confuso" (há erro conceitual).
+- message: 1 a 2 frases para ela, em 2ª pessoa, diretas e encorajadoras.
+- correct: o que ela explicou corretamente (itens curtos).
+- fixes: cada coisa dita de forma errada ou imprecisa — said (o que ela disse, resumido) e correction (o certo, curto). Não invente erros; se não houver, use [].
+- missing: conceitos importantes do slide que ela não mencionou (no máximo 3).
+- question: UMA pergunta curta sobre o que ELA APRESENTOU, para testar se entendeu de verdade (aplicação, consequência, diferença), no nível pedido. Se houve erro ou lacuna, mire nele. Não repita perguntas já feitas. expectedAnswer: 2 a 4 frases fiéis ao conteúdo. concept: o conceito cobrado.`;
+
+/** Retorno rápido sobre o entendimento da fala de um slide, com uma pergunta sobre o que foi dito. */
+export async function checkUnderstanding(db: Firestore, uid: string, input: z.infer<typeof checkSchema>) {
+  const deck = await loadDeck(db, uid, input.deckId);
+  const s = deck.slides[input.slideIndex];
+  if (!s) throw new HttpError(404, 'Slide não encontrado.');
+  return generateStructured({
+    schema: Check,
+    system: CHECK_SYSTEM,
+    effort: 'medium',
+    maxTokens: 4000,
+    content: [
+      {
+        text: `${slideText(s, input.slideIndex)}\n\nNível das perguntas: ${LEVEL[input.level]}.\nPerguntas já feitas: ${input.asked.join(' | ') || 'nenhuma'}\n\nO QUE A ALUNA FALOU: ${input.transcript}`,
+      },
+    ],
+  });
+}
+
+const CoachReaction = z.object({ verdict: z.enum(['boa', 'incompleta', 'errada']), feedback: z.string(), note: z.string() });
+
+/** No modo "Apresentar para a IA", a resposta é corrigida na hora (ao contrário da Tayna). */
+export async function coachAnswer(input: z.infer<typeof answerSchema>) {
+  const r = await generateStructured({
+    schema: CoachReaction,
+    system: `Você é uma professora de Direito. Compare a resposta da aluna com a resposta esperada (aceite outras palavras se o conteúdo estiver certo).
+
+${LEGAL_INTEGRITY}
+
+verdict: boa, incompleta ou errada. feedback (para ela, 2ª pessoa, 1 a 3 frases): se boa, confirme e acrescente um detalhe útil; se incompleta ou errada, diga o que faltou ou o que está errado e qual é a resposta certa. note: resumo objetivo para o relatório final.`,
+    effort: 'low',
+    maxTokens: 2000,
+    content: [{ text: `Pergunta: ${input.question}\nResposta esperada: ${input.expectedAnswer}\nResposta da aluna: ${input.answer.trim() || '(não respondeu)'}` }],
+  });
+  return { verdict: r.verdict, reaction: r.feedback, followUp: null, note: r.note };
+}

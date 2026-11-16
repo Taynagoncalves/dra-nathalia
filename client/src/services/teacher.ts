@@ -76,3 +76,21 @@ export const suggestLive = (code: string, slideIndex: number, level: TaynaLevel 
 export const evaluateLive = (code: string, questionId: string, answer: string) =>
   apiFetch<TaynaReaction>('/live/' + code + '/evaluate', { method: 'POST', json: { questionId, answer } });
 export const endLive = (code: string) => apiFetch('/live/' + code + '/end', { method: 'POST' });
+
+/* ── Apresentar para a IA ────────────────────────────────────────── */
+
+export interface UnderstandingCheck {
+  understanding: 'bom' | 'parcial' | 'confuso';
+  message: string;
+  correct: string[];
+  fixes: { said: string; correction: string }[];
+  missing: string[];
+  question: TaynaQuestion;
+}
+
+export const checkUnderstanding = (input: { deckId: string; slideIndex: number; transcript: string; level: TaynaLevel; asked: string[] }) =>
+  apiFetch<UnderstandingCheck>('/ai/teach/check', { method: 'POST', json: input });
+
+/** Corrige a resposta à pergunta da IA (diz a resposta certa, ao contrário da Tayna). */
+export const answerCoach = (input: { deckId: string; slideIndex: number; question: string; expectedAnswer: string; answer: string }) =>
+  apiFetch<TaynaReaction>('/ai/teach/answer', { method: 'POST', json: { ...input, personality: 'curiosa', isFollowUp: true } });

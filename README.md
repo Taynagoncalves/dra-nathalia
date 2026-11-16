@@ -253,6 +253,7 @@ Todas as rotas, exceto `/api/health`, exigem `Authorization: Bearer <Firebase ID
 | POST | `/api/ai/notebook/chat` | Caderno IA: pergunta sobre as fontes (resposta com citações) |
 | DELETE | `/api/ai/notebook/chat/:subjectId` | limpa a conversa da matéria |
 | POST | `/api/ai/decks` · `/api/ai/teach/evaluate` | slides com IA · avaliação do ensino oral |
+| POST | `/api/ai/teach/check` · `/api/ai/teach/answer` | Apresentar para a IA: retorno de entendimento do slide + pergunta; correção da resposta |
 | POST | `/api/ai/tayna/question` · `answer` · `feedback` | perguntas, reações e feedback da Tayna |
 | POST | `/api/live` · `/api/live/:code/suggest` · `evaluate` · `end` | sessão ao vivo (Tayna de verdade) |
 | POST | `/api/ai/cases` · DELETE `/api/ai/cases/:id` | começa a gerar (202, em segundo plano) / exclui um caso do Simulador |
@@ -311,6 +312,7 @@ Todas as rotas, exceto `/api/health`, exigem `Authorization: Bearer <Firebase ID
 
 - [x] Slides gerados pela IA (5 modelos), editáveis e reordenáveis
 - [x] Ensino oral: fala transcrita (Web Speech API, pt-BR) e avaliada (conceitos, omissões, clareza, coerência)
+- [x] Apresentar para a IA: a cada slide, a IA diz se você está entendendo (o que está certo, o que corrigir, o que faltou) e faz uma pergunta sobre o que você falou; a resposta é corrigida na hora. Não trava a apresentação: os retornos chegam no painel enquanto você segue. No fim, a avaliação completa
 - [x] Modo Tayna: nível, momento, personalidade e voz/texto; reage como colega (boa → “entendi!”, incompleta → acompanhamento, errada → anota); feedback final, quiz do que errou e caderno de erros
 - [x] Tayna de verdade: sessão ao vivo com código (`/ao-vivo/CÓDIGO`), convidado entra sem conta (login anônimo), slide sincronizado, perguntas sugeridas com gabarito escondido e avaliação pela IA. Regras: só quem tem o código abre, e só enquanto a sessão está ativa
 

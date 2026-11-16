@@ -21,6 +21,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import { IaCoachPanel, type CheckEntry } from '@/components/teacher/IaCoachPanel';
 import { SlideView } from '@/components/teacher/SlideView';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
@@ -38,8 +39,10 @@ import { getDb } from '@/services/firebase/app';
 import { docWithId, userDoc } from '@/services/firebase/db';
 import { createError } from '@/services/firebase/errors';
 import {
+  answerCoach,
   answerTayna,
   askTayna,
+  checkUnderstanding,
   createLiveSession,
   endLive,
   evaluateTeaching,
@@ -54,7 +57,10 @@ import {
 import { ERROR_CATEGORIES, type Deck, type ErrorCategory, type LiveSession, type TaynaLevel, type TaynaPersonality } from '@/types/models';
 import NotFound from '../NotFound';
 
-type Mode = 'oral' | 'tayna' | 'aovivo';
+type Mode = 'oral' | 'tayna' | 'aovivo' | 'ia';
+/** mínimo de palavras para a IA conferir a fala de um slide */
+const MIN_WORDS_TO_CHECK = 6;
+const wordCount = (t: string) => (t.trim() ? t.trim().split(/s+/).length : 0);
 interface TaynaConfig {
   level: TaynaLevel;
   moment: 'durante' | 'final';
@@ -81,7 +87,7 @@ const FINAL_QUESTIONS = 3;
 export default function PresentPage() {
   const { deckId = '' } = useParams();
   const [params] = useSearchParams();
-  const mode = (['oral', 'tayna', 'aovivo'] as Mode[]).find((m) => m === params.get('modo')) ?? 'oral';
+  const mode = (['oral', 'tayna', 'aovivo', 'ia'] as Mode[]).find((m) => m === params.get('modo')) ?? 'oral';
   const uid = useUid();
   const deck = useQuery({ queryKey: ['deck', uid, deckId], queryFn: async () => docWithId<Deck>(await getDoc(userDoc(uid, 'decks', deckId))) });
 
@@ -106,13 +112,17 @@ function Presenter({ deck, mode }: { deck: Deck; mode: Mode }) {
   const [feedback, setFeedback] = useState<TaynaFeedback | null>(null);
   const [finalLeft, setFinalLeft] = useState(0);
   const stageRef = useRef<HTMLDivElement>(null);
+  // "Apresentar para a IA": um retorno por slide e, quando ela responde por voz, a pergunta que está respondendo
+  const [checks, setChecks] = useState<CheckEntry[]>([]);
+  const [answeringBy, setAnsweringBy] = useState<number | null>(null);
 
   // Fala → texto: vai para o slide atual, ou para a resposta à Tayna quando ela perguntou
-  const target = useRef<{ kind: 'slide'; i: number } | { kind: 'answer' }>({ kind: 'slide', i: 0 });
-  target.current = asking?.q && !asking.reaction ? { kind: 'answer' } : { kind: 'slide', i: index };
+  const target = useRef<{ kind: 'slide'; i: number } | { kind: 'answer' } | { kind: 'iaAnswer'; i: number }>({ kind: 'slide', i: 0 });
+  target.current = answeringBy !== null ? { kind: 'iaAnswer', i: answeringBy } : asking?.q && !asking.reaction ? { kind: 'answer' } : { kind: 'slide', i: index };
   const mic = useSpeechRecognition((text) => {
     const t = target.current;
-    if (t.kind === 'answer') setAsking((a) => (a ? { ...a, answer: `${a.answer} ${text}`.trim() } : a));
+    if (t.kind === 'iaAnswer') setChecks((l) => l.map((c) => (c.slideIndex === t.i ? { ...c, answer: `${c.answer} ${text}`.trim() } : c)));
+    else if (t.kind === 'answer') setAsking((a) => (a ? { ...a, answer: `${a.answer} ${text}`.trim() } : a));
     else setTranscripts((list) => list.map((x, j) => (j === t.i ? `${x} ${text}`.trim() : x)));
   });
 
@@ -185,8 +195,52 @@ function Presenter({ deck, mode }: { deck: Deck; mode: Mode }) {
     else finish();
   };
 
+  /* ── Apresentar para a IA ──────────────────────────────────────── */
+  const patchCheck = (i: number, data: Partial<CheckEntry>) => setChecks((l) => l.map((c) => (c.slideIndex === i ? { ...c, ...data } : c)));
+
+  /** Pede o retorno do slide i sem travar a apresentação. */
+  const runCheck = (i: number) => {
+    const text = transcripts[i]?.trim() ?? '';
+    if (wordCount(text) < MIN_WORDS_TO_CHECK) return false;
+    const asked = checks.filter((c) => c.result && c.slideIndex !== i).map((c) => c.result!.question.question);
+    setChecks((l) => [...l.filter((c) => c.slideIndex !== i), { slideIndex: i, text, status: 'loading', answer: '' }]);
+    checkUnderstanding({ deckId: deck.id, slideIndex: i, transcript: text, level: config.level, asked })
+      .then((result) => patchCheck(i, { status: 'done', result }))
+      .catch((err) => patchCheck(i, { status: 'error', error: friendlyError(err, 'A IA não conseguiu analisar agora.') }));
+    return true;
+  };
+
+  const checkNow = () => {
+    if (!runCheck(index)) toast.info(`Fale um pouco mais sobre este slide (pelo menos ${MIN_WORDS_TO_CHECK} palavras) para a IA conferir.`);
+  };
+
+  const submitIaAnswer = async (i: number) => {
+    const c = checks.find((x) => x.slideIndex === i);
+    if (!c?.result || !c.answer.trim()) return;
+    if (answeringBy === i) toggleAnswerMic(i);
+    patchCheck(i, { answering: true });
+    try {
+      const reaction = await answerCoach({ deckId: deck.id, slideIndex: i, question: c.result.question.question, expectedAnswer: c.result.question.expectedAnswer, answer: c.answer });
+      patchCheck(i, { reaction, answering: false });
+    } catch (err) {
+      toast.error(friendlyError(err));
+      patchCheck(i, { answering: false });
+    }
+  };
+
+  const toggleAnswerMic = (i: number) => {
+    if (answeringBy === i) {
+      setAnsweringBy(null);
+      mic.stop();
+    } else {
+      setAnsweringBy(i);
+      if (!mic.listening) mic.start();
+    }
+  };
+
   /* ── Navegação ─────────────────────────────────────────────────── */
   const next = () => {
+    if (mode === 'ia' && checks.find((c) => c.slideIndex === index)?.text !== transcripts[index]?.trim()) runCheck(index);
     if (mode === 'tayna' && config.moment === 'durante' && !askedSlides.has(index)) {
       setAskedSlides((s) => new Set(s).add(index));
       return startQuestion(index);
@@ -208,7 +262,7 @@ function Presenter({ deck, mode }: { deck: Deck; mode: Mode }) {
     stopSpeaking();
     setPhase('finishing');
     try {
-      if (mode === 'oral') setEvaluation(await evaluateTeaching(deck.id, transcriptList()));
+      if (mode === 'oral' || mode === 'ia') setEvaluation(await evaluateTeaching(deck.id, transcriptList()));
       if (mode === 'tayna') setFeedback(await taynaFeedback(deck.id, interactions, transcriptList()));
       setPhase('done');
     } catch (err) {
@@ -250,7 +304,7 @@ function Presenter({ deck, mode }: { deck: Deck; mode: Mode }) {
           <ArrowLeft className="size-4" /> Sair
         </ButtonLink>
         <h1 className="min-w-0 flex-1 truncate font-semibold text-text">{deck.title}</h1>
-        <Badge variant="primary">{mode === 'oral' ? 'Ensino oral' : mode === 'tayna' ? 'Modo Tayna' : 'Ao vivo'}</Badge>
+        <Badge variant="primary">{mode === 'oral' ? 'Ensino oral' : mode === 'tayna' ? 'Modo Tayna' : mode === 'ia' ? 'Apresentar para a IA' : 'Ao vivo'}</Badge>
         <Button variant="ghost" size="icon" onClick={() => stageRef.current?.requestFullscreen?.()} aria-label="Tela cheia">
           <Maximize className="size-4" />
         </Button>
@@ -311,6 +365,26 @@ function Presenter({ deck, mode }: { deck: Deck; mode: Mode }) {
               </Card>
 
               {/* Tayna */}
+              {mode === 'ia' && (
+                <IaCoachPanel
+                  entries={checks}
+                  currentIndex={index}
+                  slideTitles={deck.slides.map((x) => x.title)}
+                  answeringBy={answeringBy}
+                  micSupported={mic.supported}
+                  interim={answeringBy !== null ? mic.interim : ''}
+                  canCheckNow={checks.find((c) => c.slideIndex === index)?.status !== 'loading'}
+                  onCheckNow={checkNow}
+                  onRetry={runCheck}
+                  onAnswerChange={(i, answer) => patchCheck(i, { answer })}
+                  onToggleAnswerMic={toggleAnswerMic}
+                  onSubmitAnswer={submitIaAnswer}
+                  onSkip={(i) => {
+                    if (answeringBy === i) toggleAnswerMic(i);
+                    patchCheck(i, { skipped: true });
+                  }}
+                />
+              )}
               {mode === 'tayna' && <TaynaPanel asking={asking} format={config.format} interim={mic.interim} onAnswerChange={(answer) => setAsking((a) => (a ? { ...a, answer } : a))} onSubmit={() => submitAnswer()} onSkip={() => submitAnswer(true)} onFollowUp={followUp} onContinue={continueAfterTayna} />}
             </>
           )}

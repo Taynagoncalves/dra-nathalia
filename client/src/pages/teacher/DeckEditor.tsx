@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { deleteDoc, getDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
-import { GraduationCap, Mic, Plus, Radio, Save, Trash2, Users } from 'lucide-react';
+import { BrainCircuit, GraduationCap, Mic, Plus, Radio, Save, Trash2, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -73,7 +73,7 @@ export default function DeckEditor() {
     }
   };
 
-  const go = async (mode: 'oral' | 'tayna' | 'aovivo') => {
+  const go = async (mode: 'oral' | 'ia' | 'tayna' | 'aovivo') => {
     if (dirty) await save();
     navigate(`/professora/${deckId}/apresentar?modo=${mode}`);
   };
@@ -99,12 +99,19 @@ export default function DeckEditor() {
 
       {deck.data.noMaterial && <Alert variant="info" className="mb-4">Criada sem os seus materiais: confira os fundamentos antes de apresentar.</Alert>}
 
-      <div className="mb-5 grid gap-2 sm:grid-cols-3">
+      <div className="mb-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <Button className="h-auto justify-start py-3" onClick={() => go('oral')}>
           <Mic className="size-5" />
           <span className="text-left">
             <span className="block">Ensino oral</span>
             <span className="block text-xs font-normal opacity-90">Fale; a IA avalia</span>
+          </span>
+        </Button>
+        <Button variant="secondary" className="h-auto justify-start py-3" onClick={() => go('ia')}>
+          <BrainCircuit className="size-5" />
+          <span className="text-left">
+            <span className="block">Apresentar para a IA</span>
+            <span className="block text-xs font-normal text-text-muted">Retorno a cada slide e perguntas</span>
           </span>
         </Button>
         <Button variant="secondary" className="h-auto justify-start py-3" onClick={() => go('tayna')}>
