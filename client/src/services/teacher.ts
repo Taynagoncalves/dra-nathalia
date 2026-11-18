@@ -94,3 +94,9 @@ export const checkUnderstanding = (input: { deckId: string; slideIndex: number; 
 /** Corrige a resposta à pergunta da IA (diz a resposta certa, ao contrário da Tayna). */
 export const answerCoach = (input: { deckId: string; slideIndex: number; question: string; expectedAnswer: string; answer: string }) =>
   apiFetch<TaynaReaction>('/ai/teach/answer', { method: 'POST', json: { ...input, personality: 'curiosa', isFollowUp: true } });
+
+/** Apresentação a partir dos slides da pessoa (um PDF/PowerPoint já enviado como material). */
+export const createDeckFromOwnSlides = (materialId: string) => apiFetch<{ id: string; ai: boolean }>('/ai/decks/own', { method: 'POST', json: { materialId } });
+
+/** Nova tentativa do roteiro de fala dos slides próprios (em segundo plano). */
+export const organizeOwnSlides = (deckId: string) => apiFetch<{ ok: true }>(`/ai/decks/${deckId}/organize`, { method: 'POST' });

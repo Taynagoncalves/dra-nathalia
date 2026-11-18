@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { deleteDoc, getDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
-import { BrainCircuit, GraduationCap, Mic, Plus, Radio, Save, Trash2, Users } from 'lucide-react';
+import { BrainCircuit, GraduationCap, Mic, Plus, Radio, RefreshCw, Save, Trash2, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -16,6 +16,7 @@ import { ErrorBlock, LoadingBlock } from '@/components/ui/States';
 import { useUid } from '@/hooks/useUid';
 import { friendlyError } from '@/lib/firebaseErrors';
 import { docWithId, userDoc } from '@/services/firebase/db';
+import { organizeOwnSlides } from '@/services/teacher';
 import type { Deck, Slide } from '@/types/models';
 import NotFound from '../NotFound';
 
@@ -28,7 +29,12 @@ export default function DeckEditor() {
   const uid = useUid();
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const deck = useQuery({ queryKey: ['deck', uid, deckId], queryFn: async () => docWithId<Deck>(await getDoc(userDoc(uid, 'decks', deckId))) });
+  const deck = useQuery({
+    queryKey: ['deck', uid, deckId],
+    queryFn: async () => docWithId<Deck>(await getDoc(userDoc(uid, 'decks', deckId))),
+    // slides próprios: relê enquanto a IA escreve o roteiro
+    refetchInterval: (q) => (q.state.data?.aiStatus === 'pendente' || q.state.data?.aiStatus === 'organizando' ? 5000 : false),
+  });
   const [slides, setSlides] = useState<EditSlide[]>([]);
   const [title, setTitle] = useState('');
   const [dirty, setDirty] = useState(false);
@@ -36,8 +42,9 @@ export default function DeckEditor() {
   const [preview, setPreview] = useState(0);
   const [deleting, setDeleting] = useState(false);
 
+  // não apaga o que a pessoa está editando quando o roteiro da IA chega
   useEffect(() => {
-    if (deck.data) {
+    if (deck.data && !dirty) {
       setSlides(withIds(deck.data.slides));
       setTitle(deck.data.title);
       setDirty(false);
@@ -98,6 +105,37 @@ export default function DeckEditor() {
       />
 
       {deck.data.noMaterial && <Alert variant="info" className="mb-4">Criada sem os seus materiais: confira os fundamentos antes de apresentar.</Alert>}
+      {deck.data.ownSlides && (deck.data.aiStatus === 'pendente' || deck.data.aiStatus === 'organizando') && (
+        <Alert variant="info" className="mb-4" title="A IA está lendo os seus slides">
+          Ela organiza o texto e escreve o roteiro de fala de cada slide (o que ela usa para conferir a sua explicação). Você já pode apresentar; o roteiro aparece aqui quando ficar pronto.
+        </Alert>
+      )}
+      {deck.data.ownSlides && (deck.data.aiStatus === 'erro' || deck.data.aiStatus === 'sem_ia') && (
+        <Alert variant="warning" className="mb-4">
+          {deck.data.aiStatus === 'sem_ia' ? 'O limite diário da IA acabou, então o roteiro de fala não foi escrito.' : 'A IA não conseguiu escrever o roteiro de fala agora (a IA gratuita pode estar sobrecarregada).'} Os modos com IA usam o texto de cada slide; se quiser, escreva o roteiro em “Roteiro de fala”.
+          <Button
+            size="sm"
+            variant="secondary"
+            className="mt-2"
+            onClick={async () => {
+              try {
+                await organizeOwnSlides(deckId);
+                await deck.refetch();
+              } catch (err) {
+                toast.error(friendlyError(err));
+              }
+            }}
+          >
+            <RefreshCw className="size-4" /> Tentar de novo
+          </Button>
+        </Alert>
+      )}
+      {deck.data.ownSlides && deck.data.aiStatus === 'pronto' && (
+        <Alert variant="info" className="mb-4">
+          O texto de cada slide e o roteiro de fala são o que a IA usa para conferir a sua explicação: corrija aqui se a leitura do arquivo saiu errada.
+        </Alert>
+      )}
+      {deck.data.truncated && <Alert variant="warning" className="mb-4">O arquivo tem mais de 60 slides: só os 60 primeiros foram importados.</Alert>}
 
       <div className="mb-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <Button className="h-auto justify-start py-3" onClick={() => go('oral')}>

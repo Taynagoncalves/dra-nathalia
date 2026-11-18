@@ -63,7 +63,7 @@ liveRouter.post('/', async (req, res) => {
       deckId,
       deckTitle: deck.title,
       // o convidado vê o slide (sem o roteiro de fala)
-      slides: deck.slides.map((s) => ({ title: s.title, bullets: s.bullets, highlight: s.highlight })),
+      slides: deck.slides.map((s) => ({ title: s.title, bullets: s.bullets, highlight: s.highlight, image: s.image ?? null })),
       currentSlide: 0,
       status: 'ativa',
       participants: {},

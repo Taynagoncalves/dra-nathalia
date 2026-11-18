@@ -5,6 +5,7 @@ import { processMaterial } from '../ai/materials.js';
 import { planSchema, studyPlan } from '../ai/plan.js';
 import { answerSchema, checkSchema, checkUnderstanding, coachAnswer, deckSchema, evaluateSchema, evaluateTeaching, feedbackSchema, generateDeck, questionSchema, taynaAnswer, taynaFeedback, taynaQuestion } from '../ai/teacher.js';
 import { caseSchema, startCase, startCorrection } from '../ai/simulator.js';
+import { createDeckFromMaterial, organizeOwnDeck, ownSlidesSchema } from '../ai/ownSlides.js';
 import { practiceSchema, startPracticeDay, startPracticeEvaluation } from '../ai/practiceDay.js';
 import { rateLimitOrThrow } from '../lib/rateLimit.js';
 import { chatSchema, clearNotebookChat, generateStudio, notebookChat, studioSchema } from '../ai/notebook.js';
@@ -120,6 +121,44 @@ aiRouter.post('/plan', async (req, res) => {
 aiRouter.post('/decks', async (req, res) => {
   const body = deckSchema.parse(req.body);
   res.json(await withCredit(req.uid!, 'slides', () => generateDeck(requireDb(), req.uid!, body)));
+});
+
+/**
+ * POST /api/ai/decks/own — apresentação a partir dos slides da pessoa (PDF/PowerPoint já enviado).
+ * Cria na hora (sem IA); se houver uso disponível, a IA organiza o texto e escreve o roteiro em segundo plano.
+ */
+aiRouter.post('/decks/own', async (req, res) => {
+  const { materialId } = ownSlidesSchema.parse(req.body);
+  const db = requireDb();
+  const { deckId, slides } = await createDeckFromMaterial(db, req.uid!, materialId);
+  let ai = false;
+  if (isAiConfigured) {
+    try {
+      const refund = await consumeAiCredit(db, req.uid!, 'slides_proprios');
+      ai = true;
+      void organizeOwnDeck(db, req.uid!, deckId, slides, refund);
+    } catch {
+      // limite do dia atingido: a apresentação fica pronta, só sem o roteiro da IA
+    }
+  }
+  if (!ai) await db.collection('users').doc(req.uid!).collection('decks').doc(deckId).update({ aiStatus: 'sem_ia' });
+  res.status(201).json({ id: deckId, ai });
+});
+
+/** POST /api/ai/decks/:id/organize — nova tentativa do roteiro dos slides próprios (só preenche roteiros vazios). */
+aiRouter.post('/decks/:id/organize', async (req, res) => {
+  const deckId = id.parse(req.params.id);
+  const db = requireDb();
+  const snap = await db.collection('users').doc(req.uid!).collection('decks').doc(deckId).get();
+  if (!snap.exists) throw new HttpError(404, 'Apresentação não encontrada.');
+  if (!snap.get('ownSlides')) throw new HttpError(422, 'Só apresentações com os seus slides têm esta opção.');
+  if (snap.get('aiStatus') === 'organizando' && Date.now() - Number(snap.get('jobStartedAt') ?? 0) < 10 * 60_000) {
+    throw new HttpError(409, 'A IA já está escrevendo o roteiro.');
+  }
+  await startWithCredit(req.uid!, 'slides_proprios', async (refund) => {
+    void organizeOwnDeck(db, req.uid!, deckId, null, refund);
+  });
+  res.status(202).json({ ok: true });
 });
 
 /** POST /api/ai/teach/evaluate — avalia a fala (ensino oral). */

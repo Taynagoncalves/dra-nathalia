@@ -109,7 +109,7 @@ async function callGemini<S extends z.ZodType>(req: StructuredRequest<S>): Promi
     });
   const request = async (structured: boolean) => {
     // Sobrecarregado (503), indisponível (404/500) ou no limite por minuto (429): tenta o próximo modelo
-    // (cada um tem cota própria). Se TODOS estiverem só no limite (429), espera 8 s e tenta mais uma rodada.
+    // (cada um tem cota própria). Se TODOS falharem, espera (8 s no limite, 12 s na sobrecarga) e tenta mais uma rodada.
     for (let round = 0; round < 2; round++) {
       let lastErr: unknown;
       let onlyRateLimited = true;
@@ -125,8 +125,9 @@ async function callGemini<S extends z.ZodType>(req: StructuredRequest<S>): Promi
           if (status !== 429) onlyRateLimited = false;
         }
       }
-      if (round === 0 && onlyRateLimited) {
-        await new Promise((r) => setTimeout(r, 8000));
+      // todos no limite por minuto (429) ou sobrecarregados (503): espera e tenta mais uma rodada
+      if (round === 0) {
+        await new Promise((r) => setTimeout(r, onlyRateLimited ? 8000 : 12000));
         continue;
       }
       throw lastErr;

@@ -107,7 +107,7 @@ export async function generateDeck(db: Firestore, uid: string, input: z.infer<ty
 export async function loadDeck(db: Firestore, ownerUid: string, deckId: string) {
   const snap = await userCol(db, ownerUid, 'decks').doc(deckId).get();
   if (!snap.exists) throw new HttpError(404, 'Apresentação não encontrada.');
-  return snap.data() as { title: string; subjectId: string; slides: z.infer<typeof Slide>[] };
+  return snap.data() as { title: string; subjectId: string; slides: (z.infer<typeof Slide> & { image?: string | null })[] };
 }
 
 const slideText = (s: z.infer<typeof Slide>, i: number) =>

@@ -355,14 +355,24 @@ export interface Slide {
   notes: string;
   /** destaque: exemplo, esquema, pegadinha ou pergunta */
   highlight: string | null;
+  /** slides próprios: imagem da página original do PDF */
+  image?: string | null;
+  /** slides próprios: número da página/slide no arquivo */
+  page?: number;
 }
 
 export interface Deck extends WithId {
   title: string;
   subjectId: string;
   topicId?: string | null;
-  template: DeckTemplate;
+  /** 'proprio' = slides enviados pela pessoa */
+  template: DeckTemplate | 'proprio';
   slides: Slide[];
+  ownSlides?: boolean;
+  /** passou do limite de slides e só os primeiros foram importados */
+  truncated?: boolean;
+  /** slides próprios: a IA organizando o texto e escrevendo o roteiro */
+  aiStatus?: 'pendente' | 'organizando' | 'pronto' | 'erro' | 'sem_ia';
   sourceMaterialIds: string[];
   noMaterial?: boolean;
   createdAt: Timestamp | null;
@@ -391,7 +401,7 @@ export interface LiveSession {
   ownerName: string;
   deckId: string;
   deckTitle: string;
-  slides: Pick<Slide, 'title' | 'bullets' | 'highlight'>[];
+  slides: Pick<Slide, 'title' | 'bullets' | 'highlight' | 'image'>[];
   currentSlide: number;
   status: 'ativa' | 'encerrada';
   participants: Record<string, string>;

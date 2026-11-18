@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { getDocs, orderBy, query } from 'firebase/firestore';
-import { ChevronRight, Presentation, Sparkles } from 'lucide-react';
+import { ChevronRight, FileUp, Presentation, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { OwnSlidesModal } from '@/components/teacher/OwnSlidesModal';
 import { Alert } from '@/components/ui/Alert';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -45,6 +46,7 @@ export default function TeacherHome() {
   const subjects = useAllSubjects();
   const ai = useAiStatus();
   const [open, setOpen] = useState(false);
+  const [ownOpen, setOwnOpen] = useState(false);
   const subjectName = (id: string) => subjects.data?.find((s) => s.id === id)?.name ?? 'Matéria';
 
   return (
@@ -53,9 +55,14 @@ export default function TeacherHome() {
         title="Modo Professora"
         description="Ensinar é o melhor jeito de aprender: crie slides, apresente falando e responda às perguntas da Tayna."
         actions={
-          <Button onClick={() => setOpen(true)}>
-            <Sparkles className="size-4" /> Criar slides
-          </Button>
+          <>
+            <Button variant="secondary" onClick={() => setOwnOpen(true)}>
+              <FileUp className="size-4" /> Usar meus slides
+            </Button>
+            <Button onClick={() => setOpen(true)}>
+              <Sparkles className="size-4" /> Criar slides
+            </Button>
+          </>
         }
       />
       {ai.data && !ai.data.configured && (
@@ -72,11 +79,16 @@ export default function TeacherHome() {
           <EmptyState
             icon={Presentation}
             title="Nenhuma apresentação ainda"
-            description="A IA cria os slides a partir de uma matéria, de um assunto ou dos seus materiais. Depois é só editar e apresentar."
+            description="A IA cria os slides a partir de uma matéria, de um assunto ou dos seus materiais — ou envie os seus próprios slides (PDF ou PowerPoint). Depois é só apresentar."
             action={
-              <Button onClick={() => setOpen(true)}>
-                <Sparkles className="size-4" /> Criar minha primeira apresentação
-              </Button>
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button onClick={() => setOpen(true)}>
+                  <Sparkles className="size-4" /> Criar com a IA
+                </Button>
+                <Button variant="secondary" onClick={() => setOwnOpen(true)}>
+                  <FileUp className="size-4" /> Usar meus slides
+                </Button>
+              </div>
             }
           />
         </Card>
@@ -91,7 +103,7 @@ export default function TeacherHome() {
                 </span>
                 <span className="mt-auto flex flex-wrap gap-1">
                   <Badge variant="primary">{subjectName(d.subjectId)}</Badge>
-                  <Badge variant="neutral">{TEMPLATE_LABELS[d.template]?.label}</Badge>
+                  <Badge variant="neutral">{d.template === 'proprio' ? 'Meus slides' : TEMPLATE_LABELS[d.template]?.label}</Badge>
                   <Badge variant="neutral">{d.slides.length} slides</Badge>
                 </span>
               </Link>
@@ -100,6 +112,7 @@ export default function TeacherHome() {
         </ul>
       )}
       <CreateDeckModal open={open} onClose={() => setOpen(false)} />
+      <OwnSlidesModal open={ownOpen} onClose={() => setOwnOpen(false)} />
     </>
   );
 }
