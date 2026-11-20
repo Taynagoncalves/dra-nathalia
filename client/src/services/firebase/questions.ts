@@ -4,7 +4,8 @@ import { docsWithId, userCol, userDoc } from './db';
 
 export type QuestionInput = Pick<
   Question,
-  'subjectId' | 'statement' | 'type' | 'options' | 'correctAnswer' | 'explanation' | 'source' | 'difficulty'
+  'subjectId' | 'statement' | 'type' | 'options' | 'correctAnswer' | 'explanation' | 'source' | 'difficulty' |
+  'examBoard' | 'examYear' | 'institution'
 > & { topicId: string | null; externalUrl: string };
 
 /** Todas as questões do usuário (os filtros são aplicados no client). */

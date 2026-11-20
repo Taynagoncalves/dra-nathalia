@@ -52,6 +52,9 @@ export interface QuestionFilters {
   difficulty: Difficulty | '';
   type: QuestionType | '';
   status: LastResult | '';
+  examBoard: string;
+  examYear: string;
+  institution: string;
   search: string;
 }
 
@@ -62,6 +65,9 @@ export const EMPTY_QUESTION_FILTERS: QuestionFilters = {
   difficulty: '',
   type: '',
   status: '',
+  examBoard: '',
+  examYear: '',
+  institution: '',
   search: '',
 };
 
@@ -82,6 +88,9 @@ export function filterQuestions(
       (!f.difficulty || x.difficulty === f.difficulty) &&
       (!f.type || x.type === f.type) &&
       (!f.status || (last.get(x.id)?.result ?? 'nunca') === f.status) &&
+      (!f.examBoard || norm(x.examBoard ?? '') === norm(f.examBoard)) &&
+      (!f.examYear || String(x.examYear ?? '') === f.examYear) &&
+      (!f.institution || norm(x.institution ?? '').includes(norm(f.institution))) &&
       (!q || norm(x.statement).includes(q)),
   );
 }
