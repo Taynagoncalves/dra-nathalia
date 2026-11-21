@@ -143,10 +143,6 @@ export interface Question extends WithId {
   explanation: string;
   source: QuestionSource;
   externalUrl?: string;
-  /** Metadados da prova, preenchidos manualmente para questões externas. */
-  examBoard?: string;
-  examYear?: number | null;
-  institution?: string;
   difficulty: Difficulty;
   createdAt: Timestamp;
 }

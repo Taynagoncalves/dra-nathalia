@@ -173,9 +173,6 @@ export function QuestionBank({ fixedSubjectId }: { fixedSubjectId?: string }) {
             </option>
           ))}
         </Select>
-        <Input value={filters.examBoard} onChange={(e) => set('examBoard', e.target.value)} placeholder="Banca (ex.: FGV)" aria-label="Filtrar por banca" />
-        <Input value={filters.examYear} onChange={(e) => set('examYear', e.target.value)} placeholder="Ano da prova" aria-label="Filtrar por ano da prova" inputMode="numeric" />
-        <Input value={filters.institution} onChange={(e) => set('institution', e.target.value)} placeholder="Órgão ou cargo" aria-label="Filtrar por órgão ou cargo" />
         {activeFilters && (
           <Button
             variant="ghost"
@@ -228,8 +225,6 @@ export function QuestionBank({ fixedSubjectId }: { fixedSubjectId?: string }) {
                         {topic && <Badge variant="neutral">{topic.name}</Badge>}
                         <Badge variant="neutral">{QUESTION_TYPE_LABELS[q.type]}</Badge>
                         <Badge variant={q.difficulty === 'dificil' ? 'warning' : 'neutral'}>{DIFFICULTY_LABELS[q.difficulty]}</Badge>
-                        {q.examBoard && <Badge variant="primary">{q.examBoard}{q.examYear ? ` · ${q.examYear}` : ''}</Badge>}
-                        {q.institution && <Badge variant="neutral">{q.institution}</Badge>}
                         {q.externalUrl && (
                           <a href={q.externalUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary-text hover:underline">
                             <ExternalLink className="size-3" /> link

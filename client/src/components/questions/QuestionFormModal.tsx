@@ -39,9 +39,6 @@ interface FormState {
   difficulty: Difficulty;
   source: Exclude<QuestionSource, 'ia'>;
   externalUrl: string;
-  examBoard: string;
-  examYear: string;
-  institution: string;
 }
 
 const fromQuestion = (q: Question | undefined, subjectId = ''): FormState => ({
@@ -56,9 +53,6 @@ const fromQuestion = (q: Question | undefined, subjectId = ''): FormState => ({
   difficulty: q?.difficulty ?? 'medio',
   source: q?.source && q.source !== 'ia' ? q.source : 'propria',
   externalUrl: q?.externalUrl ?? '',
-  examBoard: q?.examBoard ?? '',
-  examYear: q?.examYear ? String(q.examYear) : '',
-  institution: q?.institution ?? '',
 });
 
 export function QuestionFormModal({ open, onClose, question, defaultSubjectId }: QuestionFormModalProps) {
@@ -90,9 +84,6 @@ export function QuestionFormModal({ open, onClose, question, defaultSubjectId }:
     if (f.type === 'discursiva' && f.modelAnswer.trim().length < 5) errs.model = 'Escreva a resposta esperada (gabarito).';
     const url = f.externalUrl.trim() ? normalizeUrl(f.externalUrl) : '';
     if (url === null) errs.url = 'Link inválido.';
-    if (f.examYear && (!Number.isInteger(Number(f.examYear)) || Number(f.examYear) < 1900 || Number(f.examYear) > 2100)) {
-      errs.examYear = 'Informe um ano entre 1900 e 2100.';
-    }
     setErrors(errs);
     if (Object.keys(errs).length) return;
 
@@ -107,9 +98,6 @@ export function QuestionFormModal({ open, onClose, question, defaultSubjectId }:
       difficulty: f.difficulty,
       source: f.source,
       externalUrl: url ?? '',
-      examBoard: f.examBoard.trim(),
-      examYear: f.examYear ? Number(f.examYear) : null,
-      institution: f.institution.trim(),
     };
     try {
       if (question) {
@@ -338,17 +326,6 @@ export function QuestionFormModal({ open, onClose, question, defaultSubjectId }:
             />
           )}
         </Field>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Banca (opcional)" hint="Ex.: FGV, Cebraspe, FCC">
-            {(id) => <Input id={id} value={f.examBoard} placeholder="FGV" onChange={(e) => set('examBoard', e.target.value)} />}
-          </Field>
-          <Field label="Ano da prova (opcional)" error={errors.examYear}>
-            {(id, d) => <Input id={id} type="number" min={1900} max={2100} value={f.examYear} placeholder="2025" aria-describedby={d} aria-invalid={!!errors.examYear} onChange={(e) => set('examYear', e.target.value)} />}
-          </Field>
-          <Field label="Órgão / cargo (opcional)">
-            {(id) => <Input id={id} value={f.institution} placeholder="TJ-SP · Analista" onChange={(e) => set('institution', e.target.value)} />}
-          </Field>
-        </div>
       </form>
     </Modal>
   );
