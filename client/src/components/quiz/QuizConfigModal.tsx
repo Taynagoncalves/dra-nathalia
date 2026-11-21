@@ -9,6 +9,7 @@ import { Modal } from '@/components/ui/Modal';
 import { SubjectSelect } from '@/components/ui/SubjectSelect';
 import { useAiStatus } from '@/hooks/useQuizzes';
 import { useTopics } from '@/hooks/useStudyData';
+import { BOARDS } from '@/lib/boards';
 import { cn } from '@/lib/cn';
 import { friendlyError } from '@/lib/firebaseErrors';
 import { createQuiz } from '@/services/ai';
@@ -297,18 +298,32 @@ export function QuizConfigModal({ open, onClose, source, sourceLabel, defaultSub
           )}
         </fieldset>
 
-        {/* Foco */}
-        <Field label="Foco (opcional)">
-          {(id) => (
-            <Select id={id} value={config.focus} onChange={(e) => set('focus', e.target.value as QuizFocus)}>
-              {FOCUS.map((f) => (
-                <option key={f.value} value={f.value}>
-                  {f.label}
-                </option>
-              ))}
-            </Select>
-          )}
-        </Field>
+        {/* Foco e estilo de banca */}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Foco (opcional)">
+            {(id) => (
+              <Select id={id} value={config.focus} onChange={(e) => set('focus', e.target.value as QuizFocus)}>
+                {FOCUS.map((f) => (
+                  <option key={f.value} value={f.value}>
+                    {f.label}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
+          <Field label="Estilo da banca (opcional)" hint="Questões novas no formato e no jeito de cobrar da banca.">
+            {(id, d) => (
+              <Select id={id} aria-describedby={d} value={config.board ?? ''} onChange={(e) => set('board', e.target.value || null)}>
+                <option value="">Sem banca específica</option>
+                {BOARDS.map((b) => (
+                  <option key={b} value={b}>
+                    {b}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
+        </div>
       </div>
     </Modal>
   );

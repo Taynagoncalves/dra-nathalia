@@ -24,6 +24,7 @@ export type UserCollection =
   | 'cases'
   | 'simulations'
   | 'practiceDays'
+  | 'questionImports'
   | 'pushSubscriptions';
 
 export const userCol = (uid: string, name: UserCollection) => collection(getDb(), 'users', uid, name);

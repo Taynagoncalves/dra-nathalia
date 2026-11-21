@@ -31,7 +31,7 @@ describe('lastResults', () => {
 
 describe('filterQuestions', () => {
   const qs = [
-    { id: 'q1', subjectId: 's1', topicId: 't1', difficulty: 'facil', type: 'multipla', statement: 'Prescrição' },
+    { id: 'q1', subjectId: 's1', topicId: 't1', difficulty: 'facil', type: 'multipla', statement: 'Prescrição', examBoard: 'FGV', examYear: 2024, institution: 'OAB' },
     { id: 'q2', subjectId: 's2', topicId: null, difficulty: 'dificil', type: 'certo_errado', statement: 'Decadência' },
   ] as Question[];
   const subjectProject = new Map([
@@ -49,6 +49,13 @@ describe('filterQuestions', () => {
     expect(run({ status: 'nunca' })).toEqual(['q2']);
   });
   it('busca no enunciado sem acento', () => expect(run({ search: 'decadencia' })).toEqual(['q2']));
+  it('filtra pela prova de origem (banca, ano, órgão)', () => {
+    expect(run({ board: 'FGV' })).toEqual(['q1']);
+    expect(run({ board: '_sem' })).toEqual(['q2']);
+    expect(run({ year: '2024' })).toEqual(['q1']);
+    expect(run({ year: '2023' })).toEqual([]);
+    expect(run({ institution: 'oab' })).toEqual(['q1']);
+  });
 });
 
 describe('shuffle', () => {

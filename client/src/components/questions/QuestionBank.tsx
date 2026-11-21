@@ -1,4 +1,4 @@
-import { CheckCircle2, Circle, ExternalLink, ListChecks, Pencil, Play, Plus, RotateCcw, Search, Shuffle, Trash2, X, XCircle } from 'lucide-react';
+import { CheckCircle2, Circle, ExternalLink, FileUp, ListChecks, Loader2, Pencil, Play, Plus, RotateCcw, Search, Shuffle, Sparkles, Trash2, X, XCircle } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -12,7 +12,13 @@ import { EmptyState } from '@/components/ui/Feedback';
 import { Input, Select } from '@/components/ui/Field';
 import { ErrorBlock, LoadingBlock } from '@/components/ui/States';
 import { SubjectSelect } from '@/components/ui/SubjectSelect';
-import { useLastResults, useQuestionMutations, useQuestions } from '@/hooks/useQuestions';
+import { useQueryClient } from '@tanstack/react-query';
+import { useQuestionImports } from '@/hooks/useQuestionImports';
+import { questionKeys, useLastResults, useQuestionMutations, useQuestions } from '@/hooks/useQuestions';
+import { useUid } from '@/hooks/useUid';
+import { examMeta } from '@/lib/boards';
+import { friendlyError } from '@/lib/firebaseErrors';
+import { commentQuestionAi } from '@/services/questionsAi';
 import { useAllSubjects, useAllTopics, useProjects } from '@/hooks/useStudyData';
 import { cn } from '@/lib/cn';
 import {
@@ -26,6 +32,7 @@ import {
 } from '@/lib/questions';
 import { isUnfinished, loadSession, newSession } from '@/lib/solveSession';
 import type { Difficulty, Question, QuestionType } from '@/types/models';
+import { ImportQuestionsModal } from './ImportQuestionsModal';
 import { QuestionFormModal } from './QuestionFormModal';
 
 const PAGE = 30;
@@ -48,6 +55,11 @@ export function QuestionBank({ fixedSubjectId }: { fixedSubjectId?: string }) {
   const topics = useAllTopics();
   const projects = useProjects();
   const { remove } = useQuestionMutations();
+  const imports = useQuestionImports();
+  const uid = useUid();
+  const qc = useQueryClient();
+  const [importOpen, setImportOpen] = useState(false);
+  const [commenting, setCommenting] = useState<string | null>(null);
 
   const [filters, setFilters] = useState<QuestionFilters>({ ...EMPTY_QUESTION_FILTERS, subjectId: fixedSubjectId ?? '' });
   const [shuffled, setShuffled] = useState(true);
@@ -67,6 +79,23 @@ export function QuestionBank({ fixedSubjectId }: { fixedSubjectId?: string }) {
     [all, filters, subjectProject, last],
   );
   const topicOptions = (topics.data ?? []).filter((t) => t.subjectId === filters.subjectId);
+  // bancas e anos que aparecem nas questões (para os filtros)
+  const boards = useMemo(() => [...new Set(all.map((q) => q.examBoard).filter((b): b is string => !!b))].sort((a, b) => a.localeCompare(b, 'pt-BR')), [all]);
+  const years = useMemo(() => [...new Set(all.map((q) => q.examYear).filter((y): y is number => !!y))].sort((a, b) => b - a), [all]);
+  const openImports = (imports.data ?? []).filter((i) => i.status === 'processando' || i.status === 'revisar');
+
+  const comment = async (q: Question) => {
+    setCommenting(q.id);
+    try {
+      const r = await commentQuestionAi(q.id, !!q.explanation?.trim());
+      await qc.invalidateQueries({ queryKey: questionKeys.questions(uid) });
+      toast.success(r.disagrees ? 'Comentário pronto — a IA desconfia do gabarito: confira.' : 'Comentário da IA salvo na questão.');
+    } catch (err) {
+      toast.error(friendlyError(err, 'Não foi possível comentar agora.'));
+    } finally {
+      setCommenting(null);
+    }
+  };
   const set = <K extends keyof QuestionFilters>(k: K, v: QuestionFilters[K]) => {
     setFilters((f) => ({ ...f, [k]: v }));
     setLimit(PAGE);
@@ -99,10 +128,28 @@ export function QuestionBank({ fixedSubjectId }: { fixedSubjectId?: string }) {
         </Alert>
       )}
 
+      {openImports.map((i) => (
+        <Alert key={i.id} variant="info" title={i.status === 'processando' ? 'Importando questões' : 'Questões importadas esperando revisão'}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="flex items-center gap-1.5">
+              {i.status === 'processando' && <Loader2 className="size-4 animate-spin" aria-hidden />}
+              {i.title}
+              {i.status === 'processando' ? ` · parte ${Math.min(i.progress.done + 1, i.progress.total)} de ${i.progress.total}` : ` · ${i.questions.length} questões`}
+            </span>
+            <Button size="sm" variant="secondary" onClick={() => navigate(`/questoes/importar/${i.id}`)}>
+              {i.status === 'processando' ? 'Acompanhar' : 'Revisar'}
+            </Button>
+          </div>
+        </Alert>
+      ))}
+
       {/* Ações */}
       <div className="flex flex-wrap items-center gap-2">
         <Button onClick={() => setForm({})}>
           <Plus className="size-4" /> Nova questão
+        </Button>
+        <Button variant="secondary" onClick={() => setImportOpen(true)}>
+          <FileUp className="size-4" /> Importar prova
         </Button>
         <Button variant="secondary" disabled={!filtered.length} onClick={() => start(filtered, activeFilters ? 'Questões filtradas' : 'Todas as questões')}>
           <Play className="size-4" /> Resolver {filtered.length ? `(${filtered.length})` : ''}
@@ -173,6 +220,24 @@ export function QuestionBank({ fixedSubjectId }: { fixedSubjectId?: string }) {
             </option>
           ))}
         </Select>
+        <Select value={filters.board} onChange={(e) => set('board', e.target.value)} aria-label="Banca">
+          <option value="">Todas as bancas</option>
+          {boards.map((b) => (
+            <option key={b} value={b}>
+              {b}
+            </option>
+          ))}
+          <option value="_sem">Sem banca (questões minhas)</option>
+        </Select>
+        <Select value={filters.year} onChange={(e) => set('year', e.target.value)} disabled={!years.length} aria-label="Ano da prova">
+          <option value="">Qualquer ano</option>
+          {years.map((y) => (
+            <option key={y} value={String(y)}>
+              {y}
+            </option>
+          ))}
+        </Select>
+        <Input value={filters.institution} onChange={(e) => set('institution', e.target.value)} placeholder="Órgão (OAB, TJSP…)" aria-label="Órgão" />
         {activeFilters && (
           <Button
             variant="ghost"
@@ -225,6 +290,12 @@ export function QuestionBank({ fixedSubjectId }: { fixedSubjectId?: string }) {
                         {topic && <Badge variant="neutral">{topic.name}</Badge>}
                         <Badge variant="neutral">{QUESTION_TYPE_LABELS[q.type]}</Badge>
                         <Badge variant={q.difficulty === 'dificil' ? 'warning' : 'neutral'}>{DIFFICULTY_LABELS[q.difficulty]}</Badge>
+                        {examMeta(q) && <Badge variant="info">{examMeta(q)}</Badge>}
+                        {commenting === q.id && (
+                          <span className="inline-flex items-center gap-1 text-xs text-text-muted">
+                            <Loader2 className="size-3 animate-spin" /> comentando…
+                          </span>
+                        )}
                         {q.externalUrl && (
                           <a href={q.externalUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary-text hover:underline">
                             <ExternalLink className="size-3" /> link
@@ -241,6 +312,11 @@ export function QuestionBank({ fixedSubjectId }: { fixedSubjectId?: string }) {
                         actions={[
                           { label: 'Resolver', icon: <Play className="size-4" />, onSelect: () => start([q], 'Questão avulsa') },
                           { label: 'Editar', icon: <Pencil className="size-4" />, onSelect: () => setForm({ question: q }) },
+                          {
+                            label: q.explanation?.trim() ? 'Refazer comentário com IA' : 'Comentar com IA',
+                            icon: <Sparkles className="size-4" />,
+                            onSelect: () => void comment(q),
+                          },
                           { label: 'Excluir', icon: <Trash2 className="size-4" />, onSelect: () => setDeleting(q), danger: true, separator: true },
                         ]}
                       />
@@ -266,6 +342,7 @@ export function QuestionBank({ fixedSubjectId }: { fixedSubjectId?: string }) {
         question={form?.question}
         defaultSubjectId={fixedSubjectId ?? (filters.subjectId || undefined)}
       />
+      <ImportQuestionsModal open={importOpen} onClose={() => setImportOpen(false)} defaultSubjectId={fixedSubjectId ?? (filters.subjectId || undefined)} />
       <ConfirmDialog
         open={!!deleting}
         onClose={() => setDeleting(null)}

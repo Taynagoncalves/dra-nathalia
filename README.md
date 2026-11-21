@@ -260,6 +260,7 @@ Todas as rotas, exceto `/api/health`, exigem `Authorization: Bearer <Firebase ID
 | POST | `/api/ai/cases` · DELETE `/api/ai/cases/:id` | começa a gerar (202, em segundo plano) / exclui um caso do Simulador |
 | POST | `/api/ai/simulations/:id/correct` | começa a correção (202, em segundo plano): 8 critérios, erros, linha a linha e modelo |
 | POST | `/api/ai/practice` · `/api/ai/practice/:id/evaluate` | “Um dia na prática jurídica”: agenda e avaliação (202, em segundo plano) |
+| POST | `/api/ai/questions/import` · `/api/ai/questions/:id/comment` | importa questões de uma prova (202, em segundo plano) · comentário da IA |
 | POST | `/api/ai/plan` | plano do dia (“O que devo estudar agora?” com IA) |
 | POST | `/api/ai/notebook/studio` | Caderno IA: resumo, guia, FAQ, linha do tempo ou mapa mental |
 | DELETE | `/api/projects/:id` | exclui o projeto com todas as matérias e o conteúdo delas |
@@ -341,3 +342,13 @@ Todas as rotas, exceto `/api/health`, exigem `Authorization: Bearer <Firebase ID
 - [x] Exportação: anotação ou matéria inteira em Markdown, Word (.doc) ou PDF; relatório de desempenho (7, 30, 90 dias ou 1 ano) em PDF/Word; planilhas CSV (questões, sessões, erros, Simulador, prática) em `/relatorios`
 
 **Etapa 5 concluída: todas as etapas do projeto estão prontas.**
+
+### Questões de concurso (inspirado no QConcursos)
+
+- [x] Banca, ano, órgão e cargo em cada questão, com filtros no banco de questões e o selo "FGV · 2023 · OAB" na resolução
+- [x] Importar prova: envie o PDF oficial da prova (ou um texto seu) e a IA separa enunciado, alternativas, gabarito (do fim da prova ou de um gabarito separado), banca, ano, órgão e assunto; você revisa antes de salvar. Roda em segundo plano, com aviso quando termina
+- [x] Comentário da IA em questões sem comentário: fundamento e por que cada alternativa está certa ou errada; avisa se desconfiar do gabarito
+- [x] Quiz no estilo da banca (FGV, Cebraspe, FCC, Vunesp…): questões novas no formato da banca
+- [x] Desempenho: acertos por banca
+
+> Regra do projeto: do QConcursos e de outras plataformas, o banco guarda só o **link** da questão — o conteúdo delas não é copiado. A importação em lote usa as provas oficiais publicadas pelas bancas.

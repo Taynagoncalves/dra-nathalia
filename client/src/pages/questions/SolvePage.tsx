@@ -1,4 +1,4 @@
-import { ArrowRight, CheckCircle2, Clock, ExternalLink, NotebookPen, RotateCcw, Trophy, X, XCircle } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Clock, ExternalLink, NotebookPen, RotateCcw, Sparkles, Trophy, X, XCircle } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { RegisterErrorModal, type ErrorContext } from '@/components/errors/RegisterErrorModal';
@@ -10,7 +10,12 @@ import { Textarea } from '@/components/ui/Field';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { ErrorBlock, LoadingBlock } from '@/components/ui/States';
 import { toast } from 'sonner';
-import { useAttemptMutation, useErrorMutations, useErrors, useQuestions } from '@/hooks/useQuestions';
+import { useQueryClient } from '@tanstack/react-query';
+import { questionKeys, useAttemptMutation, useErrorMutations, useErrors, useQuestions } from '@/hooks/useQuestions';
+import { useUid } from '@/hooks/useUid';
+import { examMeta } from '@/lib/boards';
+import { friendlyError } from '@/lib/firebaseErrors';
+import { commentQuestionAi } from '@/services/questionsAi';
 import { useAllSubjects, useAllTopics } from '@/hooks/useStudyData';
 import { cn } from '@/lib/cn';
 import { formatClock } from '@/lib/dates';
@@ -128,6 +133,22 @@ function QuestionStep({ question: q, subjectName, topicName, isLast, onAnswered,
   const [result, setResult] = useState<StepResult | null>(null);
   const [errorCtx, setErrorCtx] = useState<ErrorContext | null>(null);
   const [registered, setRegistered] = useState(false);
+  const [commenting, setCommenting] = useState(false);
+  const uid = useUid();
+  const qc = useQueryClient();
+
+  /** Comentário da IA para questões sem comentário (estilo dos comentários de professores). */
+  const askComment = async () => {
+    setCommenting(true);
+    try {
+      await commentQuestionAi(q.id);
+      await qc.invalidateQueries({ queryKey: questionKeys.questions(uid) });
+    } catch (err) {
+      toast.error(friendlyError(err, 'Não foi possível comentar agora.'));
+    } finally {
+      setCommenting(false);
+    }
+  };
   const errors = useErrors();
   const { update: updateError } = useErrorMutations();
   // Erros pendentes desta questão no caderno (para "marcar como resolvido" ao acertar)
@@ -195,6 +216,7 @@ function QuestionStep({ question: q, subjectName, topicName, isLast, onAnswered,
           {subjectName && <Badge variant="primary">{subjectName}</Badge>}
           {topicName && <Badge variant="neutral">{topicName}</Badge>}
           <Badge variant="neutral">{DIFFICULTY_LABELS[q.difficulty]}</Badge>
+          {examMeta(q) && <Badge variant="info">{examMeta(q)}</Badge>}
         </div>
 
         <p className="text-base leading-relaxed whitespace-pre-line text-text">{q.statement}</p>
@@ -279,11 +301,17 @@ function QuestionStep({ question: q, subjectName, topicName, isLast, onAnswered,
             {q.type === 'discursiva' && (
               <Alert variant={result.correct ? 'success' : 'error'} title={result.correct ? 'Marcada como acerto' : 'Marcada como erro'} />
             )}
-            {q.explanation && (
+            {q.explanation ? (
               <div className="rounded-xl border border-border bg-bg p-4">
-                <p className="mb-1 text-xs font-semibold tracking-wide text-text-muted uppercase">Comentário</p>
+                <p className="mb-1 flex items-center gap-1 text-xs font-semibold tracking-wide text-text-muted uppercase">
+                  {q.explanationByAi && <Sparkles className="size-3.5 text-primary-text" aria-hidden />} {q.explanationByAi ? 'Comentário da IA' : 'Comentário'}
+                </p>
                 <p className="text-sm whitespace-pre-line text-text">{q.explanation}</p>
               </div>
+            ) : (
+              <Button variant="secondary" size="sm" onClick={askComment} loading={commenting}>
+                <Sparkles className="size-4" /> {commenting ? 'A IA está comentando…' : 'Comentário da IA'}
+              </Button>
             )}
             {q.externalUrl && (
               <a href={q.externalUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-primary-text hover:underline">

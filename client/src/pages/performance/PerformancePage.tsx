@@ -78,6 +78,14 @@ export default function PerformancePage() {
   const topicSubject = topicSubjectId || subjectIdsWithAttempts[0] || '';
   const byTopic = useMemo(() => accuracyBy(A.filter((a) => a.subjectId === topicSubject), (a) => a.topicId), [A, topicSubject]);
   const minutesBySubject = useMemo(() => minutesBy(S, (s) => s.subjectId), [S]);
+  // banca de cada questão (para "Acertos por banca")
+  const byBoard = useMemo(() => {
+    const board = new Map((questions.data ?? []).filter((q) => q.examBoard).map((q) => [q.id, q.examBoard!]));
+    return accuracyBy(
+      A.filter((a) => board.has(a.questionId)),
+      (a) => board.get(a.questionId),
+    );
+  }, [A, questions.data]);
   const categories = useMemo(() => categoryCounts(E), [E]);
   // Revisão considera o histórico todo (erros pendentes não "vencem")
   const review = useMemo(
@@ -279,6 +287,26 @@ export default function PerformancePage() {
                 emptyText="As questões desta matéria ainda não têm assunto, ou não há questões no período."
               />
             </Card>
+
+            {/* Acertos por banca (questões de prova) */}
+            {byBoard.size > 0 && (
+              <Card>
+                <CardTitle>Acertos por banca</CardTitle>
+                <CardDescription className="mb-4">Questões com a banca cadastrada (importadas de provas ou preenchidas por você).</CardDescription>
+                <BarList
+                  aria-label="Percentual de acertos por banca"
+                  max={100}
+                  items={[...byBoard]
+                    .sort((a, b) => a[1].pct - b[1].pct)
+                    .map(([board, acc]) => ({
+                      key: board,
+                      label: board,
+                      value: acc.pct,
+                      display: `${acc.pct}% · ${acc.total} ${acc.total === 1 ? 'questão' : 'questões'}`,
+                    }))}
+                />
+              </Card>
+            )}
 
             {/* Tempo por matéria */}
             <Card>

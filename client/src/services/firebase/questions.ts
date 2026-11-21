@@ -5,7 +5,8 @@ import { docsWithId, userCol, userDoc } from './db';
 export type QuestionInput = Pick<
   Question,
   'subjectId' | 'statement' | 'type' | 'options' | 'correctAnswer' | 'explanation' | 'source' | 'difficulty'
-> & { topicId: string | null; externalUrl: string };
+> &
+  Partial<Pick<Question, 'examBoard' | 'examYear' | 'institution' | 'role' | 'explanationByAi' | 'importId'>> & { topicId: string | null; externalUrl: string };
 
 /** Todas as questões do usuário (os filtros são aplicados no client). */
 export async function listQuestions(uid: string): Promise<Question[]> {

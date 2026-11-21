@@ -8,6 +8,7 @@ import { Modal } from '@/components/ui/Modal';
 import { SubjectSelect } from '@/components/ui/SubjectSelect';
 import { useQuestionMutations } from '@/hooks/useQuestions';
 import { useTopics } from '@/hooks/useStudyData';
+import { BOARDS, normalizeBoard } from '@/lib/boards';
 import { cn } from '@/lib/cn';
 import { DIFFICULTY_LABELS, LETTERS, QUESTION_TYPE_LABELS } from '@/lib/questions';
 import type { QuestionInput } from '@/services/firebase/questions';
@@ -39,6 +40,10 @@ interface FormState {
   difficulty: Difficulty;
   source: Exclude<QuestionSource, 'ia'>;
   externalUrl: string;
+  examBoard: string;
+  examYear: string;
+  institution: string;
+  role: string;
 }
 
 const fromQuestion = (q: Question | undefined, subjectId = ''): FormState => ({
@@ -53,6 +58,10 @@ const fromQuestion = (q: Question | undefined, subjectId = ''): FormState => ({
   difficulty: q?.difficulty ?? 'medio',
   source: q?.source && q.source !== 'ia' ? q.source : 'propria',
   externalUrl: q?.externalUrl ?? '',
+  examBoard: q?.examBoard ?? '',
+  examYear: q?.examYear ? String(q.examYear) : '',
+  institution: q?.institution ?? '',
+  role: q?.role ?? '',
 });
 
 export function QuestionFormModal({ open, onClose, question, defaultSubjectId }: QuestionFormModalProps) {
@@ -84,6 +93,8 @@ export function QuestionFormModal({ open, onClose, question, defaultSubjectId }:
     if (f.type === 'discursiva' && f.modelAnswer.trim().length < 5) errs.model = 'Escreva a resposta esperada (gabarito).';
     const url = f.externalUrl.trim() ? normalizeUrl(f.externalUrl) : '';
     if (url === null) errs.url = 'Link inválido.';
+    const year = f.examYear.trim() ? Number(f.examYear) : null;
+    if (year !== null && (!Number.isInteger(year) || year < 1950 || year > 2100)) errs.year = 'Ano inválido.';
     setErrors(errs);
     if (Object.keys(errs).length) return;
 
@@ -98,6 +109,10 @@ export function QuestionFormModal({ open, onClose, question, defaultSubjectId }:
       difficulty: f.difficulty,
       source: f.source,
       externalUrl: url ?? '',
+      examBoard: normalizeBoard(f.examBoard) || null,
+      examYear: year,
+      institution: f.institution.trim() || null,
+      role: f.role.trim() || null,
     };
     try {
       if (question) {
@@ -308,6 +323,33 @@ export function QuestionFormModal({ open, onClose, question, defaultSubjectId }:
             )}
           </Field>
         </div>
+
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-medium text-text">Prova de origem (opcional)</legend>
+          <div className="grid gap-3 sm:grid-cols-4">
+            <Field label="Banca">
+              {(id) => (
+                <>
+                  <Input id={id} list="bancas" value={f.examBoard} maxLength={60} placeholder="FGV, Cebraspe…" onChange={(e) => set('examBoard', e.target.value)} />
+                  <datalist id="bancas">
+                    {BOARDS.map((b) => (
+                      <option key={b} value={b} />
+                    ))}
+                  </datalist>
+                </>
+              )}
+            </Field>
+            <Field label="Ano" error={errors.year}>
+              {(id) => <Input id={id} inputMode="numeric" value={f.examYear} maxLength={4} placeholder="2024" onChange={(e) => set('examYear', e.target.value.replace(/D/g, ''))} />}
+            </Field>
+            <Field label="Órgão">
+              {(id) => <Input id={id} value={f.institution} maxLength={80} placeholder="OAB, TJSP, MPF…" onChange={(e) => set('institution', e.target.value)} />}
+            </Field>
+            <Field label="Cargo">
+              {(id) => <Input id={id} value={f.role} maxLength={80} placeholder="Juiz, Analista…" onChange={(e) => set('role', e.target.value)} />}
+            </Field>
+          </div>
+        </fieldset>
 
         <Field
           label="Link externo (opcional)"

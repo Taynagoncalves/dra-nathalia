@@ -144,6 +144,15 @@ export interface Question extends WithId {
   source: QuestionSource;
   externalUrl?: string;
   difficulty: Difficulty;
+  /** prova de origem (concurso/OAB): banca, ano, órgão e cargo */
+  examBoard?: string | null;
+  examYear?: number | null;
+  institution?: string | null;
+  role?: string | null;
+  /** o comentário foi escrito pela IA */
+  explanationByAi?: boolean;
+  /** importada de uma prova (questionImports) */
+  importId?: string | null;
   createdAt: Timestamp;
 }
 
@@ -228,6 +237,8 @@ export interface QuizConfig {
   /** segundos por questão (modo relâmpago) */
   timerSec?: number | null;
   focus: QuizFocus;
+  /** estilo de uma banca (FGV, Cebraspe…) */
+  board?: string | null;
 }
 
 /** De onde o quiz é gerado. */
@@ -515,4 +526,31 @@ export interface PracticeDay extends WithId {
   };
   createdAt: Timestamp | null;
   finishedAt?: Timestamp | null;
+}
+
+/* ── Importação de questões de provas ─────────────────────────────── */
+
+export interface ImportedQuestion {
+  number: number | null;
+  type: 'multipla' | 'certo_errado';
+  statement: string;
+  options: string[];
+  /** índice da alternativa ('0'…'4'), 'certo'/'errado', ou null sem gabarito */
+  answer: string | null;
+  annulled: boolean;
+  topic: string | null;
+}
+
+export interface QuestionImport extends WithId {
+  subjectId: string;
+  materialId: string | null;
+  title: string;
+  status: 'processando' | 'revisar' | 'erro' | 'salvo';
+  error?: string;
+  progress: { done: number; total: number };
+  meta: { board: string | null; year: number | null; institution: string | null; role: string | null };
+  questions: ImportedQuestion[];
+  savedCount?: number;
+  jobStartedAt?: number;
+  createdAt: Timestamp | null;
 }

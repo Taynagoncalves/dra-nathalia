@@ -21,6 +21,7 @@ const SubjectPage = lazy(() => import('@/pages/subjects/SubjectPage'));
 const NoteEditorPage = lazy(() => import('@/pages/subjects/NoteEditorPage'));
 const QuestionsPage = lazy(() => import('@/pages/questions/QuestionsPage'));
 const SolvePage = lazy(() => import('@/pages/questions/SolvePage'));
+const ImportReviewPage = lazy(() => import('@/pages/questions/ImportReviewPage'));
 const ErrorNotebookPage = lazy(() => import('@/pages/errors/ErrorNotebookPage'));
 const CalendarPage = lazy(() => import('@/pages/calendar/CalendarPage'));
 const QuizzesPage = lazy(() => import('@/pages/quizzes/QuizzesPage'));
@@ -79,6 +80,7 @@ const appRoutes: RouteObject[] = [
           { path: '/materias/:subjectId/anotacoes/:noteId', element: page(<NoteEditorPage />) },
           { path: '/questoes', element: page(<QuestionsPage />) },
           { path: '/questoes/resolver', element: page(<SolvePage />) },
+          { path: '/questoes/importar/:importId', element: page(<ImportReviewPage />) },
           { path: '/erros', element: page(<ErrorNotebookPage />) },
           { path: '/calendario', element: page(<CalendarPage />) },
           { path: '/quizzes', element: page(<QuizzesPage />) },

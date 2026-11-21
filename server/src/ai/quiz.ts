@@ -1,4 +1,5 @@
 import { FieldValue, type Firestore } from 'firebase-admin/firestore';
+import { BOARD_STYLE, BOARDS } from './boards.js';
 import { z } from 'zod';
 import { userCol } from '../lib/firestoreAdmin.js';
 import { HttpError } from '../middleware/errorHandler.js';
@@ -39,6 +40,8 @@ export const quizRequestSchema = z.object({
     mode: z.enum(['treino', 'prova', 'relampago']),
     timerSec: z.number().int().min(10).max(600).nullable().optional(),
     focus: z.enum(['geral', 'artigos', 'jurisprudencia', 'conceitos']).default('geral'),
+    /** estilo de uma banca (FGV, Cebraspe…) */
+    board: z.enum(BOARDS).nullable().optional(),
   }),
 });
 export type QuizRequest = z.infer<typeof quizRequestSchema>;
@@ -190,6 +193,7 @@ export async function generateQuiz(db: Firestore, uid: string, req: QuizRequest)
     `Crie exatamente ${config.count} questões: ${plan.join(', ')}.`,
     `Dificuldade pedida: ${DIFFICULTY_TEXT[config.difficulty]}.`,
     FOCUS_TEXT[config.focus],
+    config.board ? `Estilo da banca: ${BOARD_STYLE[config.board]} Imite o estilo (formato do enunciado, das alternativas e o tipo de cobrança), mas crie questões NOVAS: não reproduza questões reais de provas.` : '',
     topics.length ? `Assuntos da matéria (use em topicRef):\n${topics.map((t) => `${t.ref}: ${t.name}`).join('\n')}` : 'A matéria não tem assuntos cadastrados: use topicRef = null e dê um topicName curto.',
     source.type === 'tema'
       ? `Tema pedido pelo aluno: "${source.theme}". NÃO há documentos do aluno: use conhecimento jurídico consolidado, deixe sourceDocRef/sourcePage/sourceQuote = null e redobre o cuidado com números de artigos e súmulas.`

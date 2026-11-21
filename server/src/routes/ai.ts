@@ -6,6 +6,8 @@ import { planSchema, studyPlan } from '../ai/plan.js';
 import { answerSchema, checkSchema, checkUnderstanding, coachAnswer, deckSchema, evaluateSchema, evaluateTeaching, feedbackSchema, generateDeck, questionSchema, taynaAnswer, taynaFeedback, taynaQuestion } from '../ai/teacher.js';
 import { caseSchema, startCase, startCorrection } from '../ai/simulator.js';
 import { createDeckFromMaterial, organizeOwnDeck, ownSlidesSchema } from '../ai/ownSlides.js';
+import { importSchema, startQuestionImport } from '../ai/questionImport.js';
+import { commentQuestion } from '../ai/questionComment.js';
 import { practiceSchema, startPracticeDay, startPracticeEvaluation } from '../ai/practiceDay.js';
 import { rateLimitOrThrow } from '../lib/rateLimit.js';
 import { chatSchema, clearNotebookChat, generateStudio, notebookChat, studioSchema } from '../ai/notebook.js';
@@ -250,4 +252,20 @@ aiRouter.post('/practice/:id/evaluate', async (req, res) => {
   const dayId = id.parse(req.params.id);
   await startWithCredit(req.uid!, 'avaliacao_pratica', (refund) => startPracticeEvaluation(requireDb(), req.uid!, dayId, refund));
   res.status(202).json({ ok: true });
+});
+
+/* ── Banco de questões (provas de concurso/OAB) ───────────────────── */
+
+/** POST /api/ai/questions/import — importa as questões de uma prova (PDF oficial ou texto próprio), em segundo plano. */
+aiRouter.post('/questions/import', async (req, res) => {
+  const body = importSchema.parse(req.body);
+  const importId = await startWithCredit(req.uid!, 'importar_prova', (refund) => startQuestionImport(requireDb(), req.uid!, body, refund));
+  res.status(202).json({ id: importId });
+});
+
+/** POST /api/ai/questions/:id/comment — comentário da IA (por que cada alternativa está certa ou errada). */
+aiRouter.post('/questions/:id/comment', async (req, res) => {
+  const questionId = id.parse(req.params.id);
+  const { replace } = z.object({ replace: z.boolean().default(false) }).parse(req.body ?? {});
+  res.json(await withCredit(req.uid!, 'comentario', () => commentQuestion(requireDb(), req.uid!, questionId, replace)));
 });
