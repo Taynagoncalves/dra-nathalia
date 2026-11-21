@@ -33,7 +33,7 @@ export function Select({
 interface FieldProps {
   label: string;
   error?: string;
-  hint?: string;
+  hint?: ReactNode;
   className?: string;
   /** recebe o id gerado para ligar label ↔ campo */
   children: (id: string, describedBy?: string) => ReactNode;

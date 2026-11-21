@@ -26,3 +26,6 @@ export function normalizeBoard(raw: string | null | undefined): string {
 export function examMeta(q: { examBoard?: string | null; examYear?: number | null; institution?: string | null; role?: string | null }) {
   return [q.examBoard, q.examYear, q.institution, q.role].filter((x) => x !== null && x !== undefined && String(x).trim()).join(' · ');
 }
+
+/** Site do QConcursos (abre em outra aba; do QConcursos o banco guarda só o link das questões). */
+export const QCONCURSOS_URL = 'https://www.qconcursos.com';

@@ -8,7 +8,7 @@ import { Modal } from '@/components/ui/Modal';
 import { SubjectSelect } from '@/components/ui/SubjectSelect';
 import { useQuestionMutations } from '@/hooks/useQuestions';
 import { useTopics } from '@/hooks/useStudyData';
-import { BOARDS, normalizeBoard } from '@/lib/boards';
+import { BOARDS, normalizeBoard, QCONCURSOS_URL } from '@/lib/boards';
 import { cn } from '@/lib/cn';
 import { DIFFICULTY_LABELS, LETTERS, QUESTION_TYPE_LABELS } from '@/lib/questions';
 import type { QuestionInput } from '@/services/firebase/questions';
@@ -354,7 +354,14 @@ export function QuestionFormModal({ open, onClose, question, defaultSubjectId }:
         <Field
           label="Link externo (opcional)"
           error={errors.url}
-          hint="QConcursos, Gran etc. Guardamos só o link — não copie o conteúdo dessas plataformas."
+          hint={
+            <>
+              QConcursos, Gran etc. Guardamos só o link — não copie o conteúdo dessas plataformas.{' '}
+              <a href={QCONCURSOS_URL} target="_blank" rel="noopener noreferrer" className="font-medium text-primary-text hover:underline">
+                Abrir o QConcursos ↗
+              </a>
+            </>
+          }
         >
           {(id, d) => (
             <Input
